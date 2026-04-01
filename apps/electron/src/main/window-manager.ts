@@ -171,9 +171,21 @@ export class WindowManager {
       }
     })
 
-    // Show window when first paint is ready (faster perceived startup)
-    window.once('ready-to-show', () => {
+    const showWindowIfHidden = (reason: string) => {
+      if (window.isDestroyed() || window.isVisible()) return
+      windowLog.info(`Showing window for workspace ${workspaceId} via ${reason}`)
       window.show()
+    }
+
+    // Prefer showing on first paint for faster perceived startup.
+    window.once('ready-to-show', () => {
+      showWindowIfHidden('ready-to-show')
+    })
+
+    // Fallback for cases where ready-to-show never arrives even though the renderer loaded.
+    // Without this, the app can become frontmost with no visible window because we start hidden.
+    window.webContents.once('did-finish-load', () => {
+      showWindowIfHidden('did-finish-load')
     })
 
     // Open external links in default browser
