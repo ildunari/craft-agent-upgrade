@@ -75,6 +75,12 @@ export interface ISessionManager {
     documentId: string,
     options?: { revisionId?: string; branchId?: string; sidePanelOpen?: boolean },
   ): void
+  setActiveDocumentRevision(
+    sessionId: string,
+    documentId: string,
+    revisionId: string,
+    options?: { sidePanelOpen?: boolean },
+  ): void
   deactivateDocument(sessionId: string): void
   setDocumentWorkspace(sessionId: string, documentState: SessionDocumentState): void
   setSessionSources(sessionId: string, sourceSlugs: string[]): Promise<void>

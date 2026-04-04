@@ -31,6 +31,8 @@ describe('session persistence: documentState', () => {
             createdAt: 3,
             createdBy: 'assistant',
             hasAnnotations: false,
+            isSuperseded: true,
+            supersededAt: 4,
           },
         ],
         workspace: {

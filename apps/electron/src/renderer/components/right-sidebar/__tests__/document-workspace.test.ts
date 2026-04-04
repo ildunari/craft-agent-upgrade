@@ -5,6 +5,7 @@ import {
   getLatestDocumentRevision,
   getRecentDocuments,
   getSmartCollapsedRevisionIds,
+  getSupersededRevisionTurnKeys,
 } from '../document-workspace'
 
 const revisions: SessionDocumentRevision[] = [
@@ -16,6 +17,9 @@ const revisions: SessionDocumentRevision[] = [
     createdAt: 100,
     createdBy: 'assistant',
     hasAnnotations: false,
+    pinnedToMessageId: 'msg-1',
+    isSuperseded: true,
+    supersededAt: 200,
   },
   {
     id: 'rev-2',
@@ -79,5 +83,9 @@ describe('document workspace utilities', () => {
     expect(collapsed.has('rev-1')).toBe(true)
     expect(collapsed.has('rev-2')).toBe(false)
     expect(collapsed.has('rev-3')).toBe(false)
+  })
+
+  it('maps superseded revision links back to assistant turn keys', () => {
+    expect(Array.from(getSupersededRevisionTurnKeys(documentState))).toEqual(['assistant:msg:msg-1'])
   })
 })

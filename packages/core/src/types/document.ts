@@ -22,6 +22,8 @@ export interface SessionDocumentRevision {
   pinnedToMessageId?: string
   hasAnnotations: boolean
   summary?: string
+  isSuperseded?: boolean
+  supersededAt?: number
 }
 
 export interface SessionDocumentWorkspaceState {

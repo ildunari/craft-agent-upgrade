@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'bun:test'
 import {
   handleDocumentActivated,
+  handleDocumentRevisionChanged,
+  handleDocumentRevisionCollapsed,
   handleDocumentRevisionCreated,
   handleDocumentWorkspaceChanged,
 } from '../session'
 import type { SessionDocumentState } from '@craft-agent/core/types'
 import type {
   DocumentActivatedEvent,
+  DocumentRevisionChangedEvent,
+  DocumentRevisionCollapsedEvent,
   DocumentRevisionCreatedEvent,
   DocumentWorkspaceChangedEvent,
   SessionState,
@@ -80,5 +84,40 @@ describe('document workspace session handlers', () => {
 
     const next = handleDocumentRevisionCreated(makeState(), event)
     expect(next.state.session.documentState?.revisions).toHaveLength(1)
+  })
+
+  it('updates session document state on document_revision_changed', () => {
+    const event: DocumentRevisionChangedEvent = {
+      type: 'document_revision_changed',
+      sessionId: 'session-1',
+      documentState,
+      documentId: 'doc-1',
+      revisionId: 'rev-1',
+    }
+
+    const next = handleDocumentRevisionChanged(makeState(), event)
+    expect(next.state.session.documentState?.workspace.activeRevisionId).toBe('rev-1')
+  })
+
+  it('updates session document state on document_revision_collapsed', () => {
+    const collapsedState: SessionDocumentState = {
+      ...documentState,
+      revisions: documentState.revisions.map((revision) => ({
+        ...revision,
+        isSuperseded: true,
+        supersededAt: 101,
+      })),
+    }
+
+    const event: DocumentRevisionCollapsedEvent = {
+      type: 'document_revision_collapsed',
+      sessionId: 'session-1',
+      documentState: collapsedState,
+      documentId: 'doc-1',
+      revisionId: 'rev-1',
+    }
+
+    const next = handleDocumentRevisionCollapsed(makeState(), event)
+    expect(next.state.session.documentState?.revisions[0]?.isSuperseded).toBe(true)
   })
 })

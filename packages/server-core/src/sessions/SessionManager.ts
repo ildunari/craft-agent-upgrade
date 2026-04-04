@@ -1197,6 +1197,68 @@ function getActiveDocumentRevision(
     ))[0]
 }
 
+function sortDocumentRevisionsAscending(revisions: SessionDocumentRevision[]): SessionDocumentRevision[] {
+  return revisions
+    .slice()
+    .sort((left, right) => (
+      left.revisionNumber - right.revisionNumber ||
+      left.createdAt - right.createdAt ||
+      left.id.localeCompare(right.id)
+    ))
+}
+
+function reconcileDocumentSupersession(
+  previousDocumentState: SessionDocumentState,
+  nextDocumentState: SessionDocumentState,
+): { documentState: SessionDocumentState; newlySupersededRevisionIds: string[] } {
+  const previousRevisionsById = new Map(
+    previousDocumentState.revisions.map(revision => [revision.id, revision] as const),
+  )
+  const revisions = nextDocumentState.revisions.map(revision => ({ ...revision }))
+  const revisionsByGroup = new Map<string, SessionDocumentRevision[]>()
+
+  for (const revision of revisions) {
+    const groupKey = `${revision.documentId}::${revision.branchId}`
+    const group = revisionsByGroup.get(groupKey) ?? []
+    group.push(revision)
+    revisionsByGroup.set(groupKey, group)
+  }
+
+  const newlySupersededRevisionIds: string[] = []
+
+  for (const groupedRevisions of revisionsByGroup.values()) {
+    const sorted = sortDocumentRevisionsAscending(groupedRevisions)
+
+    for (let index = 0; index < sorted.length; index += 1) {
+      const revision = sorted[index]
+      const previousRevision = previousRevisionsById.get(revision.id)
+      const newerRevision = sorted[index + 1]
+
+      if (!newerRevision) {
+        delete revision.isSuperseded
+        delete revision.supersededAt
+        continue
+      }
+
+      const nextSupersededAt = revision.supersededAt ?? previousRevision?.supersededAt ?? newerRevision.createdAt
+      revision.isSuperseded = true
+      revision.supersededAt = nextSupersededAt
+
+      if (!previousRevision?.isSuperseded) {
+        newlySupersededRevisionIds.push(revision.id)
+      }
+    }
+  }
+
+  return {
+    documentState: {
+      ...nextDocumentState,
+      revisions,
+    },
+    newlySupersededRevisionIds,
+  }
+}
+
 function prependRecentDocumentId(recentDocumentIds: string[], documentId: string): string[] {
   return [documentId, ...recentDocumentIds.filter(candidate => candidate !== documentId)]
 }
@@ -4524,7 +4586,11 @@ export class SessionManager implements ISessionManager {
     }
 
     const previousDocumentState = normalizeDocumentState(managed.documentState) ?? createEmptyDocumentState()
-    const nextDocumentState = normalizeDocumentState(documentState) ?? createEmptyDocumentState()
+    const normalizedNextDocumentState = normalizeDocumentState(documentState) ?? createEmptyDocumentState()
+    const { documentState: nextDocumentState, newlySupersededRevisionIds } = reconcileDocumentSupersession(
+      previousDocumentState,
+      normalizedNextDocumentState,
+    )
 
     managed.documentState = nextDocumentState
 
@@ -4538,6 +4604,32 @@ export class SessionManager implements ISessionManager {
           revisionId: revision.id,
         }, managed.workspace.id)
       }
+    }
+
+    if (
+      nextDocumentState.workspace.activeRevisionId &&
+      previousDocumentState.workspace.activeRevisionId !== nextDocumentState.workspace.activeRevisionId
+    ) {
+      this.sendEvent({
+        type: 'document_revision_changed',
+        sessionId,
+        documentState: nextDocumentState,
+        documentId: nextDocumentState.workspace.activeDocumentId ?? '',
+        revisionId: nextDocumentState.workspace.activeRevisionId,
+      }, managed.workspace.id)
+    }
+
+    for (const revisionId of newlySupersededRevisionIds) {
+      const revision = nextDocumentState.revisions.find(candidate => candidate.id === revisionId)
+      if (!revision) continue
+
+      this.sendEvent({
+        type: 'document_revision_collapsed',
+        sessionId,
+        documentState: nextDocumentState,
+        documentId: revision.documentId,
+        revisionId,
+      }, managed.workspace.id)
     }
 
     this.persistSession(managed)
@@ -4565,6 +4657,7 @@ export class SessionManager implements ISessionManager {
     }
 
     const activeRevision = getActiveDocumentRevision(currentDocumentState, documentId, options)
+    const previousActiveRevisionId = currentDocumentState.workspace.activeRevisionId
     const nextDocumentState: SessionDocumentState = {
       ...currentDocumentState,
       workspace: {
@@ -4582,6 +4675,64 @@ export class SessionManager implements ISessionManager {
       type: 'document_activated',
       sessionId,
       documentState: nextDocumentState,
+    }, managed.workspace.id)
+    if (activeRevision?.id && activeRevision.id !== previousActiveRevisionId) {
+      this.sendEvent({
+        type: 'document_revision_changed',
+        sessionId,
+        documentState: nextDocumentState,
+        documentId,
+        revisionId: activeRevision.id,
+      }, managed.workspace.id)
+    }
+    this.sendEvent({
+      type: 'document_workspace_changed',
+      sessionId,
+      documentState: nextDocumentState,
+    }, managed.workspace.id)
+  }
+
+  setActiveDocumentRevision(
+    sessionId: string,
+    documentId: string,
+    revisionId: string,
+    options?: { sidePanelOpen?: boolean },
+  ): void {
+    const managed = this.sessions.get(sessionId)
+    if (!managed) {
+      throw new Error(`Session not found: ${sessionId}`)
+    }
+
+    const currentDocumentState = normalizeDocumentState(managed.documentState) ?? createEmptyDocumentState()
+    const document = currentDocumentState.documents.find(candidate => candidate.id === documentId)
+    if (!document) {
+      throw new Error(`Document not found in session workspace: ${documentId}`)
+    }
+
+    const activeRevision = getActiveDocumentRevision(currentDocumentState, documentId, { revisionId })
+    if (!activeRevision) {
+      throw new Error(`Document revision not found: ${revisionId}`)
+    }
+
+    const nextDocumentState: SessionDocumentState = {
+      ...currentDocumentState,
+      workspace: {
+        activeDocumentId: documentId,
+        activeRevisionId: activeRevision.id,
+        activeBranchId: activeRevision.branchId,
+        sidePanelOpen: options?.sidePanelOpen ?? currentDocumentState.workspace.sidePanelOpen,
+        recentDocumentIds: prependRecentDocumentId(currentDocumentState.workspace.recentDocumentIds, documentId),
+      },
+    }
+
+    managed.documentState = nextDocumentState
+    this.persistSession(managed)
+    this.sendEvent({
+      type: 'document_revision_changed',
+      sessionId,
+      documentState: nextDocumentState,
+      documentId,
+      revisionId: activeRevision.id,
     }, managed.workspace.id)
     this.sendEvent({
       type: 'document_workspace_changed',

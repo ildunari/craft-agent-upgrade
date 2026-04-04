@@ -726,6 +726,8 @@ export default function App() {
       'document_workspace_changed',
       'document_activated',
       'document_revision_created',
+      'document_revision_changed',
+      'document_revision_collapsed',
     ])
 
     // Helper to handle side effects (same logic for both paths)

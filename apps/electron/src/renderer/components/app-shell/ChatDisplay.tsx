@@ -73,6 +73,7 @@ import { routes } from "@/lib/navigate"
 import { CHAT_LAYOUT } from "@/config/layout"
 import { resolveBranchNewPanelOption } from "./branching"
 import { PluginChatCards, matchPluginChatCardsForTurn, usePluginChatCardTypes } from "@/components/plugins"
+import { getSupersededRevisionTurnKeys } from "@/components/right-sidebar/document-workspace"
 
 // ============================================================================
 // Overlay State Types
@@ -621,6 +622,8 @@ export const ChatDisplay = React.forwardRef<ChatDisplayHandle, ChatDisplayProps>
     expandedActivityGroups,
     setExpandedActivityGroups,
   } = useTurnCardExpansion(session?.id)
+  const prevSupersededTurnKeysRef = React.useRef<Set<string>>(new Set())
+  const prevSupersededSessionIdRef = React.useRef<string | null>(null)
 
 
   // ============================================================================
@@ -1584,6 +1587,27 @@ export const ChatDisplay = React.forwardRef<ChatDisplayHandle, ChatDisplayProps>
     if (!session) return []
     return groupMessagesByTurn(session.messages)
   }, [session?.messages])
+
+  const supersededRevisionTurnKeys = useMemo(
+    () => getSupersededRevisionTurnKeys(session?.documentState),
+    [session?.documentState],
+  )
+
+  useEffect(() => {
+    if (prevSupersededSessionIdRef.current !== session?.id) {
+      prevSupersededSessionIdRef.current = session?.id ?? null
+      prevSupersededTurnKeysRef.current = new Set(supersededRevisionTurnKeys)
+      return
+    }
+
+    for (const turnKey of supersededRevisionTurnKeys) {
+      if (!prevSupersededTurnKeysRef.current.has(turnKey)) {
+        toggleTurn(turnKey, false)
+      }
+    }
+
+    prevSupersededTurnKeysRef.current = new Set(supersededRevisionTurnKeys)
+  }, [session?.id, supersededRevisionTurnKeys, toggleTurn])
 
   // Keep ref in sync for scroll handler
   totalTurnCountRef.current = allTurns.length

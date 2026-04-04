@@ -87,6 +87,11 @@ export function RevisionTimeline({
                         Active
                       </span>
                     )}
+                    {revision.isSuperseded && !isLatest && (
+                      <span className="rounded-full bg-foreground/[0.06] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                        Superseded
+                      </span>
+                    )}
                   </div>
                   <div className="mt-1 text-xs text-muted-foreground">{formatTimestamp(revision.createdAt)}</div>
                 </button>

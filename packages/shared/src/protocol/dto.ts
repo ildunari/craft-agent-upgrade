@@ -213,6 +213,8 @@ export type SessionEvent =
   | { type: 'document_workspace_changed'; sessionId: string; documentState: SessionDocumentState }
   | { type: 'document_activated'; sessionId: string; documentState: SessionDocumentState }
   | { type: 'document_revision_created'; sessionId: string; documentState: SessionDocumentState; revisionId: string }
+  | { type: 'document_revision_changed'; sessionId: string; documentState: SessionDocumentState; documentId: string; revisionId: string }
+  | { type: 'document_revision_collapsed'; sessionId: string; documentState: SessionDocumentState; documentId: string; revisionId: string }
   | { type: 'working_directory_error'; sessionId: string; error: string }
 
 export interface SendMessageOptions {
@@ -248,6 +250,7 @@ export type SessionCommand =
   | { type: 'refreshTitle' }
   | { type: 'setConnection'; connectionSlug: string }
   | { type: 'activateDocument'; documentId: string; revisionId?: string; branchId?: string; sidePanelOpen?: boolean }
+  | { type: 'setActiveDocumentRevision'; documentId: string; revisionId: string; sidePanelOpen?: boolean }
   | { type: 'deactivateDocument' }
   | { type: 'setDocumentWorkspace'; documentState: SessionDocumentState }
   | { type: 'setPendingPlanExecution'; planPath: string; draftInputSnapshot?: string }

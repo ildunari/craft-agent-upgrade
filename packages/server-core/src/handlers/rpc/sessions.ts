@@ -295,6 +295,13 @@ export function registerSessionsHandlers(server: RpcServer, deps: HandlerDeps): 
           branchId: command.branchId,
           sidePanelOpen: command.sidePanelOpen,
         })
+      case 'setActiveDocumentRevision':
+        return sessionManager.setActiveDocumentRevision(
+          sessionId,
+          command.documentId,
+          command.revisionId,
+          { sidePanelOpen: command.sidePanelOpen },
+        )
       case 'deactivateDocument':
         return sessionManager.deactivateDocument(sessionId)
       case 'setDocumentWorkspace':

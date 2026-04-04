@@ -489,6 +489,22 @@ export interface DocumentRevisionCreatedEvent {
   revisionId: string
 }
 
+export interface DocumentRevisionChangedEvent {
+  type: 'document_revision_changed'
+  sessionId: string
+  documentState: SessionDocumentState
+  documentId: string
+  revisionId: string
+}
+
+export interface DocumentRevisionCollapsedEvent {
+  type: 'document_revision_collapsed'
+  sessionId: string
+  documentState: SessionDocumentState
+  documentId: string
+  revisionId: string
+}
+
 /**
  * Union of all agent events
  */
@@ -537,6 +553,8 @@ export type AgentEvent =
   | DocumentWorkspaceChangedEvent
   | DocumentActivatedEvent
   | DocumentRevisionCreatedEvent
+  | DocumentRevisionChangedEvent
+  | DocumentRevisionCollapsedEvent
 
 /**
  * Side effects that need to be handled outside the pure processor

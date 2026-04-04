@@ -90,6 +90,16 @@ export function DocumentWorkspacePanel({
     })
   }, [sessionId])
 
+  const handleSetActiveRevision = React.useCallback(async (documentId: string, revisionId: string) => {
+    if (!sessionId) return
+    await window.electronAPI.sessionCommand(sessionId, {
+      type: 'setActiveDocumentRevision',
+      documentId,
+      revisionId,
+      sidePanelOpen: documentState?.workspace.sidePanelOpen ?? true,
+    })
+  }, [sessionId, documentState?.workspace.sidePanelOpen])
+
   const handleDeactivateDocument = React.useCallback(async () => {
     if (!sessionId) return
     if (!documentState) return
@@ -168,7 +178,7 @@ export function DocumentWorkspacePanel({
                 {latestRevision && latestRevision.id !== documentState?.workspace.activeRevisionId && (
                   <button
                     type="button"
-                    onClick={() => handleActivateDocument(activeDocument.id, { revisionId: latestRevision.id })}
+                    onClick={() => void handleSetActiveRevision(activeDocument.id, latestRevision.id)}
                     className="rounded-lg bg-foreground px-2.5 py-1.5 text-xs font-medium text-background transition-opacity hover:opacity-90"
                   >
                     Open latest
@@ -211,7 +221,7 @@ export function DocumentWorkspacePanel({
           onToggleRevision={toggleRevision}
           onOpenRevision={(revisionId) => {
             if (activeDocument?.id) {
-              void handleActivateDocument(activeDocument.id, { revisionId })
+              void handleSetActiveRevision(activeDocument.id, revisionId)
             }
           }}
         />

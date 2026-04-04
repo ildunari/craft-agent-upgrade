@@ -64,6 +64,8 @@ describe('createManagedSession', () => {
           createdAt: 1,
           createdBy: 'assistant',
           hasAnnotations: false,
+          isSuperseded: true,
+          supersededAt: 2,
         },
       ],
       workspace: {

@@ -117,17 +117,35 @@ export function getSmartCollapsedRevisionIds(
 ): Set<string> {
   const sorted = sortDocumentRevisions(revisions)
   const collapsed = new Set<string>()
+  const hasServerSupersessionState = sorted.some((revision) => revision.isSuperseded !== undefined)
 
   for (const revision of sorted) {
     const isActive = revision.id === options?.activeRevisionId
     const isLatest = revision.id === options?.latestRevisionId
-    const shouldStayExpanded = isActive || isLatest || revision.hasAnnotations || !!revision.pinnedToMessageId
+    const isSuperseded = hasServerSupersessionState
+      ? revision.isSuperseded === true
+      : !isActive && !isLatest
+    const shouldStayExpanded = isActive || isLatest || revision.hasAnnotations || !isSuperseded
     if (!shouldStayExpanded) {
       collapsed.add(revision.id)
     }
   }
 
   return collapsed
+}
+
+export function getSupersededRevisionTurnKeys(
+  documentState: SessionDocumentState | undefined,
+): Set<string> {
+  if (!documentState) return new Set<string>()
+
+  const turnKeys = new Set<string>()
+  for (const revision of documentState.revisions) {
+    if (!revision.isSuperseded || revision.hasAnnotations || !revision.pinnedToMessageId) continue
+    turnKeys.add(`assistant:msg:${revision.pinnedToMessageId}`)
+  }
+
+  return turnKeys
 }
 
 export function formatDocumentKind(kind: DocumentKind): string {

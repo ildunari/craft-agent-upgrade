@@ -42,6 +42,8 @@ import type {
   DocumentWorkspaceChangedEvent,
   DocumentActivatedEvent,
   DocumentRevisionCreatedEvent,
+  DocumentRevisionChangedEvent,
+  DocumentRevisionCollapsedEvent,
   Effect,
 } from '../types'
 import type { Message } from '../../../shared/types'
@@ -945,6 +947,20 @@ export function handleDocumentActivated(
 export function handleDocumentRevisionCreated(
   state: SessionState,
   event: DocumentRevisionCreatedEvent,
+): ProcessResult {
+  return updateDocumentWorkspaceState(state, event.documentState)
+}
+
+export function handleDocumentRevisionChanged(
+  state: SessionState,
+  event: DocumentRevisionChangedEvent,
+): ProcessResult {
+  return updateDocumentWorkspaceState(state, event.documentState)
+}
+
+export function handleDocumentRevisionCollapsed(
+  state: SessionState,
+  event: DocumentRevisionCollapsedEvent,
 ): ProcessResult {
   return updateDocumentWorkspaceState(state, event.documentState)
 }
