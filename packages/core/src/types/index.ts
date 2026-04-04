@@ -21,6 +21,15 @@ export type {
   SessionStatus,
 } from './session.ts';
 
+// Document workspace types
+export type {
+  DocumentKind,
+  SessionDocumentRef,
+  SessionDocumentRevision,
+  SessionDocumentWorkspaceState,
+  SessionDocumentState,
+} from './document.ts';
+
 // Message types
 export type {
   MessageRole,

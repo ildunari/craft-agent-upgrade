@@ -12,6 +12,7 @@ import type {
   ContentBadge,
   ToolDisplayMeta,
   AnnotationV1,
+  SessionDocumentState,
   PermissionRequest as BasePermissionRequest,
 } from '@craft-agent/core/types'
 import type { PermissionMode } from '../agent/mode-types'
@@ -107,6 +108,7 @@ export interface Session {
   isArchived?: boolean
   archivedAt?: number
   supportsBranching?: boolean
+  documentState?: SessionDocumentState
 }
 
 export interface CreateSessionOptions {
@@ -208,6 +210,9 @@ export type SessionEvent =
   | { type: 'source_activated'; sessionId: string; sourceSlug: string; originalMessage: string }
   | { type: 'usage_update'; sessionId: string; tokenUsage: { inputTokens: number; contextWindow?: number } }
   | { type: 'message_annotations_updated'; sessionId: string; messageId: string; annotations: AnnotationV1[] }
+  | { type: 'document_workspace_changed'; sessionId: string; documentState: SessionDocumentState }
+  | { type: 'document_activated'; sessionId: string; documentState: SessionDocumentState }
+  | { type: 'document_revision_created'; sessionId: string; documentState: SessionDocumentState; revisionId: string }
   | { type: 'working_directory_error'; sessionId: string; error: string }
 
 export interface SendMessageOptions {
@@ -242,6 +247,9 @@ export type SessionCommand =
   | { type: 'revokeShare' }
   | { type: 'refreshTitle' }
   | { type: 'setConnection'; connectionSlug: string }
+  | { type: 'activateDocument'; documentId: string; revisionId?: string; branchId?: string; sidePanelOpen?: boolean }
+  | { type: 'deactivateDocument' }
+  | { type: 'setDocumentWorkspace'; documentState: SessionDocumentState }
   | { type: 'setPendingPlanExecution'; planPath: string; draftInputSnapshot?: string }
   | { type: 'markCompactionComplete' }
   | { type: 'clearPendingPlanExecution' }
