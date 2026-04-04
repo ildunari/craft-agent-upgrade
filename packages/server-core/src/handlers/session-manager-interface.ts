@@ -81,6 +81,18 @@ export interface ISessionManager {
     revisionId: string,
     options?: { sidePanelOpen?: boolean },
   ): void
+  forkDocumentBranch(
+    sessionId: string,
+    documentId: string,
+    revisionId: string,
+    options?: { label?: string; sidePanelOpen?: boolean },
+  ): void
+  switchDocumentBranch(
+    sessionId: string,
+    documentId: string,
+    branchId: string,
+    options?: { revisionId?: string; sidePanelOpen?: boolean },
+  ): void
   deactivateDocument(sessionId: string): void
   setDocumentWorkspace(sessionId: string, documentState: SessionDocumentState): void
   setSessionSources(sessionId: string, sourceSlugs: string[]): Promise<void>

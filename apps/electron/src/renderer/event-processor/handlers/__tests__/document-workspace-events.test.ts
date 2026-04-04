@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'bun:test'
 import {
   handleDocumentActivated,
+  handleDocumentBranchCreated,
+  handleDocumentBranchSwitched,
   handleDocumentRevisionChanged,
   handleDocumentRevisionCollapsed,
   handleDocumentRevisionCreated,
@@ -9,6 +11,8 @@ import {
 import type { SessionDocumentState } from '@craft-agent/core/types'
 import type {
   DocumentActivatedEvent,
+  DocumentBranchCreatedEvent,
+  DocumentBranchSwitchedEvent,
   DocumentRevisionChangedEvent,
   DocumentRevisionCollapsedEvent,
   DocumentRevisionCreatedEvent,
@@ -19,6 +23,9 @@ import type {
 const documentState: SessionDocumentState = {
   documents: [
     { id: 'doc-1', displayName: 'Plan.docx', kind: 'docx', origin: 'generated' as const },
+  ],
+  branches: [
+    { id: 'main', documentId: 'doc-1', createdAt: 100 },
   ],
   revisions: [
     {
@@ -119,5 +126,40 @@ describe('document workspace session handlers', () => {
 
     const next = handleDocumentRevisionCollapsed(makeState(), event)
     expect(next.state.session.documentState?.revisions[0]?.isSuperseded).toBe(true)
+  })
+
+  it('updates session document state on document_branch_created', () => {
+    const branchState: SessionDocumentState = {
+      ...documentState,
+      branches: [
+        ...documentState.branches,
+        { id: 'branch-2', documentId: 'doc-1', parentBranchId: 'main', forkedFromRevisionId: 'rev-1', createdAt: 200 },
+      ],
+    }
+
+    const event: DocumentBranchCreatedEvent = {
+      type: 'document_branch_created',
+      sessionId: 'session-1',
+      documentState: branchState,
+      documentId: 'doc-1',
+      branchId: 'branch-2',
+    }
+
+    const next = handleDocumentBranchCreated(makeState(), event)
+    expect(next.state.session.documentState?.branches).toHaveLength(2)
+  })
+
+  it('updates session document state on document_branch_switched', () => {
+    const event: DocumentBranchSwitchedEvent = {
+      type: 'document_branch_switched',
+      sessionId: 'session-1',
+      documentState,
+      documentId: 'doc-1',
+      branchId: 'main',
+      revisionId: 'rev-1',
+    }
+
+    const next = handleDocumentBranchSwitched(makeState(), event)
+    expect(next.state.session.documentState?.workspace.activeBranchId).toBe('main')
   })
 })

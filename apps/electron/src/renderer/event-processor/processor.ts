@@ -52,6 +52,8 @@ import {
   handleDocumentRevisionCreated,
   handleDocumentRevisionChanged,
   handleDocumentRevisionCollapsed,
+  handleDocumentBranchCreated,
+  handleDocumentBranchSwitched,
 } from './handlers/session'
 
 /**
@@ -235,6 +237,12 @@ export function processEvent(
 
     case 'document_revision_collapsed':
       return handleDocumentRevisionCollapsed(state, event)
+
+    case 'document_branch_created':
+      return handleDocumentBranchCreated(state, event)
+
+    case 'document_branch_switched':
+      return handleDocumentBranchSwitched(state, event)
 
     default: {
       // Unknown event type - return state unchanged but as new reference

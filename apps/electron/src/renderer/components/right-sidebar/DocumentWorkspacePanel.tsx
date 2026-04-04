@@ -100,6 +100,16 @@ export function DocumentWorkspacePanel({
     })
   }, [sessionId, documentState?.workspace.sidePanelOpen])
 
+  const handleSwitchBranch = React.useCallback(async (documentId: string, branchId: string) => {
+    if (!sessionId) return
+    await window.electronAPI.sessionCommand(sessionId, {
+      type: 'switchDocumentBranch',
+      documentId,
+      branchId,
+      sidePanelOpen: documentState?.workspace.sidePanelOpen ?? true,
+    })
+  }, [sessionId, documentState?.workspace.sidePanelOpen])
+
   const handleDeactivateDocument = React.useCallback(async () => {
     if (!sessionId) return
     if (!documentState) return
@@ -207,7 +217,7 @@ export function DocumentWorkspacePanel({
             branches={branches}
             onSelectBranch={(branchId) => {
               if (activeDocument?.id) {
-                void handleActivateDocument(activeDocument.id, { branchId })
+                void handleSwitchBranch(activeDocument.id, branchId)
               }
             }}
           />

@@ -44,6 +44,8 @@ import type {
   DocumentRevisionCreatedEvent,
   DocumentRevisionChangedEvent,
   DocumentRevisionCollapsedEvent,
+  DocumentBranchCreatedEvent,
+  DocumentBranchSwitchedEvent,
   Effect,
 } from '../types'
 import type { Message } from '../../../shared/types'
@@ -961,6 +963,20 @@ export function handleDocumentRevisionChanged(
 export function handleDocumentRevisionCollapsed(
   state: SessionState,
   event: DocumentRevisionCollapsedEvent,
+): ProcessResult {
+  return updateDocumentWorkspaceState(state, event.documentState)
+}
+
+export function handleDocumentBranchCreated(
+  state: SessionState,
+  event: DocumentBranchCreatedEvent,
+): ProcessResult {
+  return updateDocumentWorkspaceState(state, event.documentState)
+}
+
+export function handleDocumentBranchSwitched(
+  state: SessionState,
+  event: DocumentBranchSwitchedEvent,
 ): ProcessResult {
   return updateDocumentWorkspaceState(state, event.documentState)
 }

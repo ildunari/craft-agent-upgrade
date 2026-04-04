@@ -26,6 +26,15 @@ export interface SessionDocumentRevision {
   supersededAt?: number
 }
 
+export interface SessionDocumentBranch {
+  id: string
+  documentId: string
+  parentBranchId?: string
+  forkedFromRevisionId?: string
+  createdAt: number
+  label?: string
+}
+
 export interface SessionDocumentWorkspaceState {
   activeDocumentId?: string
   activeRevisionId?: string
@@ -36,6 +45,7 @@ export interface SessionDocumentWorkspaceState {
 
 export interface SessionDocumentState {
   documents: SessionDocumentRef[]
+  branches: SessionDocumentBranch[]
   revisions: SessionDocumentRevision[]
   workspace: SessionDocumentWorkspaceState
 }

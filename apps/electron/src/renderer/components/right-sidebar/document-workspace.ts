@@ -1,5 +1,6 @@
 import type {
   DocumentKind,
+  SessionDocumentBranch,
   SessionDocumentRef,
   SessionDocumentRevision,
   SessionDocumentState,
@@ -54,20 +55,28 @@ export function getDocumentBranchViews(
   activeBranchId?: string,
 ): DocumentBranchView[] {
   const revisions = getDocumentRevisions(documentState, documentId)
-  const branches = new Map<string, SessionDocumentRevision[]>()
+  const branches = new Map<string, { branch?: SessionDocumentBranch; revisions: SessionDocumentRevision[] }>()
+
+  for (const branch of documentState?.branches ?? []) {
+    if (documentId && branch.documentId !== documentId) continue
+    branches.set(branch.id, {
+      branch,
+      revisions: [],
+    })
+  }
 
   for (const revision of revisions) {
-    const branchRevisions = branches.get(revision.branchId) ?? []
-    branchRevisions.push(revision)
-    branches.set(revision.branchId, branchRevisions)
+    const branchEntry = branches.get(revision.branchId) ?? { revisions: [] }
+    branchEntry.revisions.push(revision)
+    branches.set(revision.branchId, branchEntry)
   }
 
   return Array.from(branches.entries())
-    .map(([branchId, branchRevisions], index) => {
-      const sortedRevisions = sortDocumentRevisions(branchRevisions)
+    .map(([branchId, branchEntry], index) => {
+      const sortedRevisions = sortDocumentRevisions(branchEntry.revisions)
       return {
         branchId,
-        label: formatBranchLabel(branchId, index),
+        label: branchEntry.branch?.label ?? formatBranchLabel(branchId, index),
         revisions: sortedRevisions,
         headRevision: sortedRevisions[0],
         isActive: branchId === activeBranchId,

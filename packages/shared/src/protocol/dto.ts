@@ -215,6 +215,8 @@ export type SessionEvent =
   | { type: 'document_revision_created'; sessionId: string; documentState: SessionDocumentState; revisionId: string }
   | { type: 'document_revision_changed'; sessionId: string; documentState: SessionDocumentState; documentId: string; revisionId: string }
   | { type: 'document_revision_collapsed'; sessionId: string; documentState: SessionDocumentState; documentId: string; revisionId: string }
+  | { type: 'document_branch_created'; sessionId: string; documentState: SessionDocumentState; documentId: string; branchId: string }
+  | { type: 'document_branch_switched'; sessionId: string; documentState: SessionDocumentState; documentId: string; branchId: string; revisionId?: string }
   | { type: 'working_directory_error'; sessionId: string; error: string }
 
 export interface SendMessageOptions {
@@ -251,6 +253,8 @@ export type SessionCommand =
   | { type: 'setConnection'; connectionSlug: string }
   | { type: 'activateDocument'; documentId: string; revisionId?: string; branchId?: string; sidePanelOpen?: boolean }
   | { type: 'setActiveDocumentRevision'; documentId: string; revisionId: string; sidePanelOpen?: boolean }
+  | { type: 'forkDocumentBranch'; documentId: string; revisionId: string; label?: string; sidePanelOpen?: boolean }
+  | { type: 'switchDocumentBranch'; documentId: string; branchId: string; revisionId?: string; sidePanelOpen?: boolean }
   | { type: 'deactivateDocument' }
   | { type: 'setDocumentWorkspace'; documentState: SessionDocumentState }
   | { type: 'setPendingPlanExecution'; planPath: string; draftInputSnapshot?: string }

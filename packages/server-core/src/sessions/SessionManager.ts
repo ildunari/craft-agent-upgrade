@@ -41,6 +41,7 @@ import {
 } from '@craft-agent/shared/config'
 import type {
   ActiveSessionInfo,
+  SessionDocumentBranch,
   SessionDocumentRevision,
   SessionDocumentState,
   SessionProcessingStatus,
@@ -1124,7 +1125,10 @@ function normalizeDocumentState(documentState?: SessionDocumentState): SessionDo
       documentIds.has(revision.documentId),
     )
     : []
-  const revisionById = new Map(revisions.map(revision => [revision.id, revision] as const))
+  const branches = normalizeDocumentBranches(documentState, documents, revisions)
+  const branchIds = new Set(branches.map(branch => branch.id))
+  const normalizedRevisions = revisions.filter(revision => branchIds.has(revision.branchId))
+  const revisionById = new Map(normalizedRevisions.map(revision => [revision.id, revision] as const))
 
   const activeRevision = documentState.workspace?.activeRevisionId
     ? revisionById.get(documentState.workspace.activeRevisionId)
@@ -1139,7 +1143,11 @@ function normalizeDocumentState(documentState?: SessionDocumentState): SessionDo
     : undefined
   const activeBranchId = activeRevisionId
     ? activeRevision?.branchId
-    : undefined
+    : (
+      documentState.workspace?.activeBranchId && branchIds.has(documentState.workspace.activeBranchId)
+        ? documentState.workspace.activeBranchId
+        : undefined
+    )
 
   const recentDocumentIds = Array.from(new Set(
     (documentState.workspace?.recentDocumentIds ?? []).filter(documentId => documentIds.has(documentId)),
@@ -1151,7 +1159,8 @@ function normalizeDocumentState(documentState?: SessionDocumentState): SessionDo
 
   return {
     documents,
-    revisions,
+    branches,
+    revisions: normalizedRevisions,
     workspace: {
       activeDocumentId,
       activeRevisionId,
@@ -1160,6 +1169,62 @@ function normalizeDocumentState(documentState?: SessionDocumentState): SessionDo
       recentDocumentIds,
     },
   }
+}
+
+function getDocumentBranchKey(documentId: string, branchId: string): string {
+  return `${documentId}::${branchId}`
+}
+
+function normalizeDocumentBranches(
+  documentState: SessionDocumentState,
+  documents: SessionDocumentState['documents'],
+  revisions: SessionDocumentRevision[],
+): SessionDocumentBranch[] {
+  const documentIds = new Set(documents.map(document => document.id))
+  const rawBranches = Array.isArray(documentState.branches)
+    ? documentState.branches.filter(branch => !!branch?.id && documentIds.has(branch.documentId))
+    : []
+  const revisionsByBranch = new Map<string, { branchId: string; revisions: SessionDocumentRevision[] }>()
+  const revisionById = new Map(revisions.map(revision => [revision.id, revision] as const))
+  const branchesById = new Map<string, SessionDocumentBranch>()
+
+  for (const branch of rawBranches) {
+    branchesById.set(getDocumentBranchKey(branch.documentId, branch.id), { ...branch })
+  }
+
+  for (const revision of revisions) {
+    const branchKey = getDocumentBranchKey(revision.documentId, revision.branchId)
+    const group = revisionsByBranch.get(branchKey) ?? { branchId: revision.branchId, revisions: [] }
+    group.revisions.push(revision)
+    revisionsByBranch.set(branchKey, group)
+  }
+
+  for (const [branchKey, branchEntry] of revisionsByBranch.entries()) {
+    const sortedRevisions = sortDocumentRevisionsAscending(branchEntry.revisions)
+    const firstRevision = sortedRevisions[0]
+    if (!firstRevision) continue
+    const existingBranch = branchesById.get(branchKey)
+    const branchId = branchEntry.branchId
+
+    const parentRevision = firstRevision.parentRevisionId
+      ? revisionById.get(firstRevision.parentRevisionId)
+      : undefined
+
+    branchesById.set(branchKey, {
+      id: branchId,
+      documentId: existingBranch?.documentId ?? firstRevision.documentId,
+      parentBranchId: existingBranch?.parentBranchId ?? (
+        parentRevision && parentRevision.branchId !== branchId ? parentRevision.branchId : undefined
+      ),
+      forkedFromRevisionId: existingBranch?.forkedFromRevisionId ?? (
+        parentRevision && parentRevision.branchId !== branchId ? parentRevision.id : undefined
+      ),
+      createdAt: existingBranch?.createdAt ?? firstRevision.createdAt,
+      label: existingBranch?.label,
+    })
+  }
+
+  return Array.from(branchesById.values()).filter(branch => documentIds.has(branch.documentId))
 }
 
 function getActiveDocumentRevision(
@@ -1210,11 +1275,60 @@ function sortDocumentRevisionsAscending(revisions: SessionDocumentRevision[]): S
 function reconcileDocumentSupersession(
   previousDocumentState: SessionDocumentState,
   nextDocumentState: SessionDocumentState,
-): { documentState: SessionDocumentState; newlySupersededRevisionIds: string[] } {
+): {
+  documentState: SessionDocumentState
+  newlySupersededRevisionIds: string[]
+  newlyCreatedBranchIds: string[]
+} {
   const previousRevisionsById = new Map(
     previousDocumentState.revisions.map(revision => [revision.id, revision] as const),
   )
+  const previousBranchesById = new Map(
+    previousDocumentState.branches.map(branch => [getDocumentBranchKey(branch.documentId, branch.id), branch] as const),
+  )
   const revisions = nextDocumentState.revisions.map(revision => ({ ...revision }))
+  const branches = nextDocumentState.branches.map(branch => ({ ...branch }))
+  const branchesById = new Map(
+    branches.map(branch => [getDocumentBranchKey(branch.documentId, branch.id), branch] as const),
+  )
+  const revisionById = new Map(revisions.map(revision => [revision.id, revision] as const))
+  const newlyCreatedBranchIds: string[] = []
+
+  for (const revision of revisions) {
+    if (!previousRevisionsById.has(revision.id) && revision.parentRevisionId) {
+      const parentRevision = revisionById.get(revision.parentRevisionId)
+      if (parentRevision) {
+        const previousHeadRevision = sortDocumentRevisionsAscending(
+          previousDocumentState.revisions.filter(candidate =>
+            candidate.documentId === parentRevision.documentId &&
+            candidate.branchId === parentRevision.branchId,
+          ),
+        ).at(-1)
+
+        const shouldForkFromHistory = !!previousHeadRevision && previousHeadRevision.id !== parentRevision.id
+        if (shouldForkFromHistory && revision.branchId === parentRevision.branchId) {
+          revision.branchId = `branch-${randomUUID().slice(0, 8)}`
+        }
+
+        const branchKey = getDocumentBranchKey(revision.documentId, revision.branchId)
+        if (!branchesById.has(branchKey)) {
+          const branch: SessionDocumentBranch = {
+            id: revision.branchId,
+            documentId: revision.documentId,
+            parentBranchId: shouldForkFromHistory ? parentRevision.branchId : undefined,
+            forkedFromRevisionId: shouldForkFromHistory ? parentRevision.id : undefined,
+            createdAt: revision.createdAt,
+          }
+          branchesById.set(branchKey, branch)
+          branches.push(branch)
+          if (!previousBranchesById.has(branchKey)) {
+            newlyCreatedBranchIds.push(branch.id)
+          }
+        }
+      }
+    }
+  }
+
   const revisionsByGroup = new Map<string, SessionDocumentRevision[]>()
 
   for (const revision of revisions) {
@@ -1253,9 +1367,11 @@ function reconcileDocumentSupersession(
   return {
     documentState: {
       ...nextDocumentState,
+      branches,
       revisions,
     },
     newlySupersededRevisionIds,
+    newlyCreatedBranchIds,
   }
 }
 
@@ -1266,6 +1382,7 @@ function prependRecentDocumentId(recentDocumentIds: string[], documentId: string
 function createEmptyDocumentState(): SessionDocumentState {
   return {
     documents: [],
+    branches: [],
     revisions: [],
     workspace: {
       sidePanelOpen: false,
@@ -1462,6 +1579,7 @@ export class SessionManager implements ISessionManager {
         sessionId,
         documentState: incomingDocumentState ?? {
           documents: [],
+          branches: [],
           revisions: [],
           workspace: {
             sidePanelOpen: false,
@@ -4587,7 +4705,11 @@ export class SessionManager implements ISessionManager {
 
     const previousDocumentState = normalizeDocumentState(managed.documentState) ?? createEmptyDocumentState()
     const normalizedNextDocumentState = normalizeDocumentState(documentState) ?? createEmptyDocumentState()
-    const { documentState: nextDocumentState, newlySupersededRevisionIds } = reconcileDocumentSupersession(
+    const {
+      documentState: nextDocumentState,
+      newlySupersededRevisionIds,
+      newlyCreatedBranchIds,
+    } = reconcileDocumentSupersession(
       previousDocumentState,
       normalizedNextDocumentState,
     )
@@ -4604,6 +4726,19 @@ export class SessionManager implements ISessionManager {
           revisionId: revision.id,
         }, managed.workspace.id)
       }
+    }
+
+    for (const branchId of newlyCreatedBranchIds) {
+      const branch = nextDocumentState.branches.find(candidate => candidate.id === branchId)
+      if (!branch) continue
+
+      this.sendEvent({
+        type: 'document_branch_created',
+        sessionId,
+        documentState: nextDocumentState,
+        documentId: branch.documentId,
+        branchId,
+      }, managed.workspace.id)
     }
 
     if (
@@ -4734,6 +4869,126 @@ export class SessionManager implements ISessionManager {
       documentId,
       revisionId: activeRevision.id,
     }, managed.workspace.id)
+    this.sendEvent({
+      type: 'document_workspace_changed',
+      sessionId,
+      documentState: nextDocumentState,
+    }, managed.workspace.id)
+  }
+
+  forkDocumentBranch(
+    sessionId: string,
+    documentId: string,
+    revisionId: string,
+    options?: { label?: string; sidePanelOpen?: boolean },
+  ): void {
+    const managed = this.sessions.get(sessionId)
+    if (!managed) {
+      throw new Error(`Session not found: ${sessionId}`)
+    }
+
+    const currentDocumentState = normalizeDocumentState(managed.documentState) ?? createEmptyDocumentState()
+    const sourceRevision = getActiveDocumentRevision(currentDocumentState, documentId, { revisionId })
+    if (!sourceRevision) {
+      throw new Error(`Document revision not found: ${revisionId}`)
+    }
+
+    const branchId = `branch-${randomUUID().slice(0, 8)}`
+    const nextDocumentState: SessionDocumentState = {
+      ...currentDocumentState,
+      branches: [
+        ...currentDocumentState.branches,
+        {
+          id: branchId,
+          documentId,
+          parentBranchId: sourceRevision.branchId,
+          forkedFromRevisionId: sourceRevision.id,
+          createdAt: Date.now(),
+          label: options?.label,
+        },
+      ],
+      workspace: {
+        ...currentDocumentState.workspace,
+        sidePanelOpen: options?.sidePanelOpen ?? currentDocumentState.workspace.sidePanelOpen,
+      },
+    }
+
+    managed.documentState = nextDocumentState
+    this.persistSession(managed)
+    this.sendEvent({
+      type: 'document_branch_created',
+      sessionId,
+      documentState: nextDocumentState,
+      documentId,
+      branchId,
+    }, managed.workspace.id)
+    this.sendEvent({
+      type: 'document_workspace_changed',
+      sessionId,
+      documentState: nextDocumentState,
+    }, managed.workspace.id)
+  }
+
+  switchDocumentBranch(
+    sessionId: string,
+    documentId: string,
+    branchId: string,
+    options?: { revisionId?: string; sidePanelOpen?: boolean },
+  ): void {
+    const managed = this.sessions.get(sessionId)
+    if (!managed) {
+      throw new Error(`Session not found: ${sessionId}`)
+    }
+
+    const currentDocumentState = normalizeDocumentState(managed.documentState) ?? createEmptyDocumentState()
+    const branch = currentDocumentState.branches.find(candidate =>
+      candidate.id === branchId && candidate.documentId === documentId,
+    )
+    if (!branch) {
+      throw new Error(`Document branch not found: ${branchId}`)
+    }
+
+    const branchRevisions = currentDocumentState.revisions.filter(candidate =>
+      candidate.documentId === documentId && candidate.branchId === branchId,
+    )
+    const activeRevision = options?.revisionId
+      ? getActiveDocumentRevision(currentDocumentState, documentId, { revisionId: options.revisionId, branchId })
+      : (
+        branchRevisions.length > 0
+          ? getActiveDocumentRevision(currentDocumentState, documentId, { branchId })
+          : undefined
+      )
+
+    const nextDocumentState: SessionDocumentState = {
+      ...currentDocumentState,
+      workspace: {
+        activeDocumentId: documentId,
+        activeRevisionId: activeRevision?.id,
+        activeBranchId: branchId,
+        sidePanelOpen: options?.sidePanelOpen ?? currentDocumentState.workspace.sidePanelOpen,
+        recentDocumentIds: prependRecentDocumentId(currentDocumentState.workspace.recentDocumentIds, documentId),
+      },
+    }
+
+    managed.documentState = nextDocumentState
+    this.persistSession(managed)
+    this.sendEvent({
+      type: 'document_branch_switched',
+      sessionId,
+      documentState: nextDocumentState,
+      documentId,
+      branchId,
+      revisionId: activeRevision?.id,
+    }, managed.workspace.id)
+    if (activeRevision?.id) {
+      this.sendEvent({
+        type: 'document_revision_changed',
+        sessionId,
+        documentState: nextDocumentState,
+        documentId,
+        revisionId: activeRevision.id,
+      }, managed.workspace.id)
+    }
     this.sendEvent({
       type: 'document_workspace_changed',
       sessionId,

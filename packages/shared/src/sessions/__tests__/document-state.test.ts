@@ -22,6 +22,13 @@ describe('session persistence: documentState', () => {
             origin: 'generated',
           },
         ],
+        branches: [
+          {
+            id: 'main',
+            documentId: 'doc-1',
+            createdAt: 2,
+          },
+        ],
         revisions: [
           {
             id: 'rev-1',

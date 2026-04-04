@@ -728,6 +728,8 @@ export default function App() {
       'document_revision_created',
       'document_revision_changed',
       'document_revision_collapsed',
+      'document_branch_created',
+      'document_branch_switched',
     ])
 
     // Helper to handle side effects (same logic for both paths)

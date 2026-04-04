@@ -55,6 +55,13 @@ describe('createManagedSession', () => {
           origin: 'generated',
         },
       ],
+      branches: [
+        {
+          id: 'main',
+          documentId: 'doc-1',
+          createdAt: 1,
+        },
+      ],
       revisions: [
         {
           id: 'rev-1',

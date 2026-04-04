@@ -505,6 +505,23 @@ export interface DocumentRevisionCollapsedEvent {
   revisionId: string
 }
 
+export interface DocumentBranchCreatedEvent {
+  type: 'document_branch_created'
+  sessionId: string
+  documentState: SessionDocumentState
+  documentId: string
+  branchId: string
+}
+
+export interface DocumentBranchSwitchedEvent {
+  type: 'document_branch_switched'
+  sessionId: string
+  documentState: SessionDocumentState
+  documentId: string
+  branchId: string
+  revisionId?: string
+}
+
 /**
  * Union of all agent events
  */
@@ -555,6 +572,8 @@ export type AgentEvent =
   | DocumentRevisionCreatedEvent
   | DocumentRevisionChangedEvent
   | DocumentRevisionCollapsedEvent
+  | DocumentBranchCreatedEvent
+  | DocumentBranchSwitchedEvent
 
 /**
  * Side effects that need to be handled outside the pure processor

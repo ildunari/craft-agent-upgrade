@@ -302,6 +302,26 @@ export function registerSessionsHandlers(server: RpcServer, deps: HandlerDeps): 
           command.revisionId,
           { sidePanelOpen: command.sidePanelOpen },
         )
+      case 'forkDocumentBranch':
+        return sessionManager.forkDocumentBranch(
+          sessionId,
+          command.documentId,
+          command.revisionId,
+          {
+            label: command.label,
+            sidePanelOpen: command.sidePanelOpen,
+          },
+        )
+      case 'switchDocumentBranch':
+        return sessionManager.switchDocumentBranch(
+          sessionId,
+          command.documentId,
+          command.branchId,
+          {
+            revisionId: command.revisionId,
+            sidePanelOpen: command.sidePanelOpen,
+          },
+        )
       case 'deactivateDocument':
         return sessionManager.deactivateDocument(sessionId)
       case 'setDocumentWorkspace':

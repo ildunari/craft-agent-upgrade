@@ -24,6 +24,7 @@ export type {
 // Document workspace types
 export type {
   DocumentKind,
+  SessionDocumentBranch,
   SessionDocumentRef,
   SessionDocumentRevision,
   SessionDocumentWorkspaceState,

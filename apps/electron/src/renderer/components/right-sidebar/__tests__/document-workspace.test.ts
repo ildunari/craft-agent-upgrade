@@ -48,6 +48,10 @@ const documentState: SessionDocumentState = {
     { id: 'doc-1', displayName: 'Plan.docx', kind: 'docx', origin: 'generated' },
     { id: 'doc-2', displayName: 'Appendix.pdf', kind: 'pdf', origin: 'attachment' },
   ],
+  branches: [
+    { id: 'main', documentId: 'doc-1', createdAt: 100, label: 'Main' },
+    { id: 'fork-1', documentId: 'doc-1', parentBranchId: 'main', forkedFromRevisionId: 'rev-1', createdAt: 150, label: 'History' },
+  ],
   revisions,
   workspace: {
     activeDocumentId: 'doc-1',
