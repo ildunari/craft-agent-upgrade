@@ -22,6 +22,7 @@ import {
   Inbox,
   Globe,
   FolderOpen,
+  PanelRightOpen,
   Cake,
   Calendar,
   Layers,
@@ -74,7 +75,7 @@ import type { ChatDisplayHandle } from "./ChatDisplay"
 import { LeftSidebar } from "./LeftSidebar"
 import { useSession } from "@/hooks/useSession"
 import { ensureSessionMessagesLoadedAtom } from "@/atoms/sessions"
-import { AppShellProvider, type AppShellContextType } from "@/context/AppShellContext"
+import { AppShellProvider, type AppShellContextType, useSession as useSessionData } from "@/context/AppShellContext"
 import { EscapeInterruptProvider, useEscapeInterrupt } from "@/context/EscapeInterruptContext"
 import { useTheme } from "@/context/ThemeContext"
 import { getResizeGradientStyle } from "@/hooks/useResizeGradient"
@@ -122,7 +123,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { PanelHeader } from "./PanelHeader"
 import { SendToWorkspaceDialog } from "./SendToWorkspaceDialog"
 import { EditPopover, getEditConfig, type EditContextKey } from "@/components/ui/EditPopover"
+import { PanelHeaderCenterButton } from "@/components/ui/PanelHeaderCenterButton"
 import SettingsNavigator from "@/pages/settings/SettingsNavigator"
+import { DocumentWorkspacePanel } from "@/components/right-sidebar"
 import {
   PANEL_GAP,
   PANEL_EDGE_INSET,
@@ -572,7 +575,7 @@ function AppShellContent({
   const sessionListHandleRef = React.useRef<HTMLDivElement>(null)
   const [session, setSession] = useSession()
   const { resolvedMode, isDark, setMode } = useTheme()
-  const { canGoBack, canGoForward, goBack, goForward, navigateToSource, navigateToSession } = useNavigation()
+  const { canGoBack, canGoForward, goBack, goForward, navigateToSource, navigateToSession, updateRightSidebar } = useNavigation()
 
   // Double-Esc interrupt feature: first Esc shows warning, second Esc interrupts
   const { handleEscapePress } = useEscapeInterrupt()
@@ -1309,6 +1312,75 @@ function AppShellContent({
     return workspaceSessionMetas.filter(s => !s.isArchived)
   }, [workspaceSessionMetas])
 
+  const activeDocumentSessionId = sessionsContext?.sessionId ?? focusedSessionId ?? session.selected ?? null
+  const activeDocumentSession = useSessionData(activeDocumentSessionId ?? '')
+  const activeDocumentSessionMeta = activeDocumentSessionId ? sessionMetaMap.get(activeDocumentSessionId) : undefined
+  const activeDocumentState = activeDocumentSession?.documentState
+  const isDocumentSidebarOpen = navState.rightSidebar?.type === 'document'
+  const isRightSidebarVisible = !!navState.rightSidebar && navState.rightSidebar.type !== 'none'
+  const [pendingDocumentSidebarOpen, setPendingDocumentSidebarOpen] = React.useState<boolean | null>(null)
+
+  const syncDocumentSidebarOpen = useCallback(async (nextOpen: boolean) => {
+    if (!activeDocumentSessionId || !activeDocumentState) return
+    await window.electronAPI.sessionCommand(activeDocumentSessionId, {
+      type: 'setDocumentWorkspace',
+      documentState: {
+        ...activeDocumentState,
+        workspace: {
+          ...activeDocumentState.workspace,
+          sidePanelOpen: nextOpen,
+        },
+      },
+    })
+  }, [activeDocumentSessionId, activeDocumentState])
+
+  const handleToggleDocumentSidebar = useCallback(() => {
+    const nextOpen = !isDocumentSidebarOpen
+    setPendingDocumentSidebarOpen(nextOpen)
+    updateRightSidebar(nextOpen ? { type: 'document' } : { type: 'none' })
+    void syncDocumentSidebarOpen(nextOpen)
+  }, [isDocumentSidebarOpen, syncDocumentSidebarOpen, updateRightSidebar])
+
+  const documentSidebarButton = useMemo(() => {
+    if (!isSessionsNavigation(navState) || !activeDocumentSessionId) return undefined
+
+    return (
+      <PanelHeaderCenterButton
+        icon={<PanelRightOpen className="h-4 w-4" />}
+        onClick={handleToggleDocumentSidebar}
+        tooltip={isDocumentSidebarOpen ? 'Close document workspace' : 'Open document workspace'}
+      />
+    )
+  }, [navState, activeDocumentSessionId, handleToggleDocumentSidebar, isDocumentSidebarOpen])
+
+  React.useEffect(() => {
+    if (pendingDocumentSidebarOpen !== null && activeDocumentState?.workspace.sidePanelOpen === pendingDocumentSidebarOpen) {
+      setPendingDocumentSidebarOpen(null)
+    }
+  }, [pendingDocumentSidebarOpen, activeDocumentState?.workspace.sidePanelOpen])
+
+  React.useEffect(() => {
+    if (!isSessionsNavigation(navState)) {
+      setPendingDocumentSidebarOpen(null)
+      if (isDocumentSidebarOpen) {
+        updateRightSidebar({ type: 'none' })
+      }
+      return
+    }
+
+    if (pendingDocumentSidebarOpen !== null) return
+    if (!activeDocumentState) return
+
+    if (activeDocumentState.workspace.sidePanelOpen && !isDocumentSidebarOpen) {
+      updateRightSidebar({ type: 'document' })
+      return
+    }
+
+    if (!activeDocumentState.workspace.sidePanelOpen && isDocumentSidebarOpen) {
+      updateRightSidebar({ type: 'none' })
+    }
+  }, [navState, activeDocumentState, isDocumentSidebarOpen, pendingDocumentSidebarOpen, updateRightSidebar])
+
   const refreshWorkspaceUnreadMap = useCallback(async () => {
     try {
       const summary = await window.electronAPI.getUnreadSummary()
@@ -1568,7 +1640,7 @@ function AppShellContent({
     enabledModes,
     sessionStatuses: effectiveSessionStatuses,
     onSessionSourcesChange: handleSessionSourcesChange,
-    rightSidebarButton: null,
+    rightSidebarButton: documentSidebarButton,
     // Search state for ChatDisplay highlighting
     sessionListSearchQuery: searchActive ? searchQuery : undefined,
     isSearchModeActive: searchActive,
@@ -1581,7 +1653,7 @@ function AppShellContent({
     automationTestResults,
     getAutomationHistory,
     onReplayAutomation: handleReplayAutomation,
-  }), [contextValue, handleDeleteSession, sources, skills, activeSessionWorkingDirectory, displayLabelConfigs, handleSessionLabelsChange, enabledModes, effectiveSessionStatuses, handleSessionSourcesChange, searchActive, searchQuery, handleChatMatchInfoChange, handleTestAutomation, handleToggleAutomation, handleDuplicateAutomation, handleDeleteAutomation, automationTestResults, getAutomationHistory, handleReplayAutomation])
+  }), [contextValue, handleDeleteSession, sources, skills, activeSessionWorkingDirectory, displayLabelConfigs, handleSessionLabelsChange, enabledModes, effectiveSessionStatuses, handleSessionSourcesChange, documentSidebarButton, searchActive, searchQuery, handleChatMatchInfoChange, handleTestAutomation, handleToggleAutomation, handleDuplicateAutomation, handleDeleteAutomation, automationTestResults, getAutomationHistory, handleReplayAutomation])
 
   // Persist expanded folders to localStorage (workspace-scoped)
   React.useEffect(() => {
@@ -3213,10 +3285,32 @@ function AppShellContent({
           }
           navigatorWidth={isAutoCompact ? sessionListWidth : (effectiveSidebarAndNavigatorHidden ? 0 : sessionListWidth)}
           isSidebarAndNavigatorHidden={effectiveSidebarAndNavigatorHidden}
-          isRightSidebarVisible={false}
+          isRightSidebarVisible={isRightSidebarVisible}
           isCompact={isAutoCompact}
           isResizing={!!isResizing}
         />
+
+        <motion.div
+          initial={false}
+          animate={{
+            width: isRightSidebarVisible ? 360 : 0,
+            marginLeft: isRightSidebarVisible ? PANEL_GAP : 0,
+            opacity: isRightSidebarVisible ? 1 : 0,
+          }}
+          transition={springTransition}
+          className="h-full shrink-0 overflow-hidden"
+        >
+          {isDocumentSidebarOpen && (
+            <DocumentWorkspacePanel
+              sessionId={activeDocumentSessionId}
+              sessionFolderPath={activeDocumentSession?.sessionFolderPath ?? activeDocumentSessionMeta?.sessionFolderPath}
+              onRequestClose={() => {
+                setPendingDocumentSidebarOpen(null)
+                updateRightSidebar({ type: 'none' })
+              }}
+            />
+          )}
+        </motion.div>
 
         {/* Sidebar Resize Handle (absolute, hidden in focused mode) */}
         {!effectiveSidebarAndNavigatorHidden && (

@@ -748,6 +748,7 @@ export function buildRouteFromNavigationState(state: NavigationState): string {
  *
  * Examples:
  *   'history' -> { type: 'history' }
+ *   'document' -> { type: 'document' }
  *   'files' -> { type: 'files' }
  *   'files/src/main.ts' -> { type: 'files', path: 'src/main.ts' }
  *   'none' -> { type: 'none' }
@@ -755,6 +756,9 @@ export function buildRouteFromNavigationState(state: NavigationState): string {
 export function parseRightSidebarParam(sidebarStr?: string): RightSidebarPanel | undefined {
   if (!sidebarStr) return undefined
 
+  if (sidebarStr === 'document') {
+    return { type: 'document' }
+  }
   if (sidebarStr === 'history') {
     return { type: 'history' }
   }
@@ -778,6 +782,8 @@ export function buildRightSidebarParam(panel?: RightSidebarPanel): string | unde
   if (!panel || panel.type === 'none') return undefined
 
   switch (panel.type) {
+    case 'document':
+      return 'document'
     case 'history':
       return 'history'
     case 'files':

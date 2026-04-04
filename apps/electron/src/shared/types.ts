@@ -653,6 +653,7 @@ export interface ElectronAPI {
  */
 export type RightSidebarPanel =
   | { type: 'files'; path?: string }
+  | { type: 'document' }
   | { type: 'history' }
   | { type: 'none' }
 

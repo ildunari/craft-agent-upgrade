@@ -39,6 +39,9 @@ import type {
   AuthRequestEvent,
   AuthCompletedEvent,
   UsageUpdateEvent,
+  DocumentWorkspaceChangedEvent,
+  DocumentActivatedEvent,
+  DocumentRevisionCreatedEvent,
   Effect,
 } from '../types'
 import type { Message } from '../../../shared/types'
@@ -905,5 +908,44 @@ export function handleUsageUpdate(
     },
     effects: [],
   }
+}
+
+function updateDocumentWorkspaceState(
+  state: SessionState,
+  documentState: DocumentWorkspaceChangedEvent['documentState'],
+): ProcessResult {
+  const { session, streaming } = state
+
+  return {
+    state: {
+      session: {
+        ...session,
+        documentState,
+      },
+      streaming,
+    },
+    effects: [],
+  }
+}
+
+export function handleDocumentWorkspaceChanged(
+  state: SessionState,
+  event: DocumentWorkspaceChangedEvent,
+): ProcessResult {
+  return updateDocumentWorkspaceState(state, event.documentState)
+}
+
+export function handleDocumentActivated(
+  state: SessionState,
+  event: DocumentActivatedEvent,
+): ProcessResult {
+  return updateDocumentWorkspaceState(state, event.documentState)
+}
+
+export function handleDocumentRevisionCreated(
+  state: SessionState,
+  event: DocumentRevisionCreatedEvent,
+): ProcessResult {
+  return updateDocumentWorkspaceState(state, event.documentState)
 }
 

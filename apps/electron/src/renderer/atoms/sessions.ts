@@ -32,6 +32,8 @@ export interface SessionMeta {
   sharedUrl?: string
   /** Shared session ID in viewer (for revoke) */
   sharedId?: string
+  /** Session storage directory path */
+  sessionFolderPath?: string
   /** ID of the last final (non-intermediate) assistant message - for unread detection */
   lastFinalMessageId?: string
   /**
@@ -98,7 +100,7 @@ export function extractSessionMeta(session: Session): SessionMeta {
 
   // Destructure fields that don't exist on SessionMeta or need overrides
   const {
-    messages: _msgs, sessionFolderPath: _sf, supportsBranching: _sb,
+    messages: _msgs, supportsBranching: _sb, documentState: _ds,
     workspaceName: _wn, thinkingLevel: _tl, currentStatus: _cs,
     isAsyncOperationOngoing, isRegeneratingTitle,
     messageCount, lastFinalMessageId: sessionLastFinal,

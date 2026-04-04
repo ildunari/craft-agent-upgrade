@@ -90,7 +90,12 @@ export function PanelSlot({
   // back button (compact mode), and isFocusedPanel for input field appearance
   const contextOverride = useMemo(() => ({
     ...parentContext,
-    rightSidebarButton: closeButton,
+    rightSidebarButton: parentContext.rightSidebarButton ? (
+      <div className="flex items-center gap-1.5">
+        {parentContext.rightSidebarButton}
+        {closeButton}
+      </div>
+    ) : closeButton,
     leadingAction: backButton,
     isFocusedPanel,
   }), [parentContext, closeButton, backButton, isFocusedPanel])

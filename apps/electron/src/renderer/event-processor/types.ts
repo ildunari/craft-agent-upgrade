@@ -6,6 +6,7 @@
  */
 
 import type { Session, Message, PermissionRequest, CredentialRequest, TypedError, PermissionMode, SessionStatus, AuthRequest, ToolDisplayMeta } from '../../shared/types'
+import type { SessionDocumentState } from '@craft-agent/core/types'
 
 /**
  * Streaming state for a session - replaces streamingTextRef
@@ -469,6 +470,25 @@ export interface UsageUpdateEvent {
   }
 }
 
+export interface DocumentWorkspaceChangedEvent {
+  type: 'document_workspace_changed'
+  sessionId: string
+  documentState: SessionDocumentState
+}
+
+export interface DocumentActivatedEvent {
+  type: 'document_activated'
+  sessionId: string
+  documentState: SessionDocumentState
+}
+
+export interface DocumentRevisionCreatedEvent {
+  type: 'document_revision_created'
+  sessionId: string
+  documentState: SessionDocumentState
+  revisionId: string
+}
+
 /**
  * Union of all agent events
  */
@@ -514,6 +534,9 @@ export type AgentEvent =
   | AuthCompletedEvent
   | SourceActivatedEvent
   | UsageUpdateEvent
+  | DocumentWorkspaceChangedEvent
+  | DocumentActivatedEvent
+  | DocumentRevisionCreatedEvent
 
 /**
  * Side effects that need to be handled outside the pure processor

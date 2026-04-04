@@ -47,6 +47,9 @@ import {
   handleAuthRequest,
   handleAuthCompleted,
   handleUsageUpdate,
+  handleDocumentWorkspaceChanged,
+  handleDocumentActivated,
+  handleDocumentRevisionCreated,
 } from './handlers/session'
 
 /**
@@ -215,6 +218,15 @@ export function processEvent(
 
     case 'usage_update':
       return handleUsageUpdate(state, event)
+
+    case 'document_workspace_changed':
+      return handleDocumentWorkspaceChanged(state, event)
+
+    case 'document_activated':
+      return handleDocumentActivated(state, event)
+
+    case 'document_revision_created':
+      return handleDocumentRevisionCreated(state, event)
 
     default: {
       // Unknown event type - return state unchanged but as new reference

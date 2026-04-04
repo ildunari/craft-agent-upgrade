@@ -115,6 +115,8 @@ interface NavigationContextValue {
   updateRightSidebar: (panel: RightSidebarPanel | undefined) => void
   /** Toggle right sidebar (with optional panel) */
   toggleRightSidebar: (panel?: RightSidebarPanel) => void
+  /** Open the document workspace sidebar */
+  openDocumentPanel: () => void
   /** Navigate to a source (or source list if no slug), preserving the current filter type */
   navigateToSource: (sourceSlug?: string) => void
   /** Navigate to a session, preserving the current filter type */
@@ -1163,10 +1165,16 @@ export function NavigationProvider({
 
   const toggleRightSidebar = useCallback((panel?: RightSidebarPanel) => {
     const currentSidebar = rightSidebarRef.current
-    const newPanel = panel || (currentSidebar && currentSidebar.type !== 'none'
-      ? { type: 'none' as const }
-      : { type: 'none' as const })
+    const newPanel = panel
+      ? currentSidebar?.type === panel.type
+        ? { type: 'none' as const }
+        : panel
+      : { type: 'none' as const }
     updateRightSidebar(newPanel)
+  }, [updateRightSidebar])
+
+  const openDocumentPanel = useCallback(() => {
+    updateRightSidebar({ type: 'document' })
   }, [updateRightSidebar])
 
   // =========================================================================
@@ -1262,6 +1270,7 @@ export function NavigationProvider({
         goForward,
         updateRightSidebar,
         toggleRightSidebar,
+        openDocumentPanel,
         navigateToSource,
         navigateToSession,
       }}
