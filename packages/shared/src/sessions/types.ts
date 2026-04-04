@@ -12,6 +12,7 @@
 import type { PermissionMode } from '../agent/mode-manager.ts';
 import type { ThinkingLevel } from '../agent/thinking-levels.ts';
 import type { StoredAttachment, MessageRole, ToolStatus, AuthRequestType, AuthStatus, CredentialInputMode, StoredMessage } from '@craft-agent/core/types';
+import type { SessionDocumentState } from '@craft-agent/core/types';
 
 /**
  * Session fields that persist to disk.
@@ -48,6 +49,8 @@ export const SESSION_PERSISTENT_FIELDS = [
   'branchFromSessionPath',
   'branchFromSdkCwd',
   'branchFromSdkTurnId',
+  // Document workspace
+  'documentState',
   // Remote transfer handoff
   'transferredSessionSummary',
   'transferredSessionSummaryApplied',
@@ -191,6 +194,8 @@ export interface SessionConfig {
    * - Pi: session entry ID (used with SessionManager.branch(anchor))
    */
   branchFromSdkTurnId?: string;
+  /** Session-scoped document workspace state. */
+  documentState?: SessionDocumentState;
   /** One-shot hidden summary injected on the first turn after a remote transfer. */
   transferredSessionSummary?: string;
   /** Whether the transferred-session summary has already been injected. */
@@ -263,6 +268,8 @@ export interface SessionHeader {
   connectionLocked?: boolean;
   /** Thinking level for this session ('off', 'think', 'max') */
   thinkingLevel?: ThinkingLevel;
+  /** Session-scoped document workspace state. */
+  documentState?: SessionDocumentState;
   /**
    * Pending plan execution state - tracks "Accept & Compact" flow.
    * When set, indicates a plan needs to be executed after compaction completes.
@@ -348,6 +355,8 @@ export interface SessionMetadata {
   connectionLocked?: boolean;
   /** Thinking level for this session ('off', 'think', 'max') */
   thinkingLevel?: ThinkingLevel;
+  /** Session-scoped document workspace state. */
+  documentState?: SessionDocumentState;
   /** ID of last message user has read - for unread detection */
   lastReadMessageId?: string;
   /** ID of the last final (non-intermediate) assistant message - for unread detection */

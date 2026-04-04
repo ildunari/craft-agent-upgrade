@@ -542,6 +542,7 @@ export async function updateSessionMetadata(
     | 'model'
     | 'backendId'
     | 'llmConnection'
+    | 'documentState'
     | 'isArchived'
     | 'archivedAt'
   >>
@@ -564,6 +565,7 @@ export async function updateSessionMetadata(
   if (updates.model !== undefined) session.model = updates.model;
   if (updates.backendId !== undefined) session.backendId = updates.backendId;
   if (updates.llmConnection !== undefined) session.llmConnection = updates.llmConnection;
+  if ('documentState' in updates) session.documentState = updates.documentState;
   if (updates.isArchived !== undefined) session.isArchived = updates.isArchived;
   if ('archivedAt' in updates) session.archivedAt = updates.archivedAt;
 

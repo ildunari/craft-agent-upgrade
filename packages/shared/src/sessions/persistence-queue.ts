@@ -18,6 +18,7 @@ interface HeaderMetadataSignature {
   sessionStatus?: string
   permissionMode?: string
   backendId?: string
+  documentState?: SessionHeader['documentState']
   hasUnread?: boolean
   lastReadMessageId?: string
 }
@@ -30,6 +31,7 @@ function getHeaderMetadataSignature(header: SessionHeader): string {
     sessionStatus: header.sessionStatus,
     permissionMode: header.permissionMode,
     backendId: header.backendId,
+    documentState: header.documentState,
     hasUnread: header.hasUnread,
     lastReadMessageId: header.lastReadMessageId,
   }
@@ -45,6 +47,7 @@ function mergeHeaderWithExternalMetadata(localHeader: SessionHeader, diskHeader:
     sessionStatus: diskHeader.sessionStatus,
     permissionMode: diskHeader.permissionMode,
     backendId: diskHeader.backendId,
+    documentState: diskHeader.documentState,
     hasUnread: diskHeader.hasUnread,
     lastReadMessageId: diskHeader.lastReadMessageId,
   }

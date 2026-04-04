@@ -290,9 +290,15 @@ export function registerSessionsHandlers(server: RpcServer, deps: HandlerDeps): 
         log.info(`IPC: setConnection received for session ${sessionId}, connection: ${command.connectionSlug}`)
         return sessionManager.setSessionConnection(sessionId, command.connectionSlug)
       case 'activateDocument':
+        return sessionManager.activateDocument(sessionId, command.documentId, {
+          revisionId: command.revisionId,
+          branchId: command.branchId,
+          sidePanelOpen: command.sidePanelOpen,
+        })
       case 'deactivateDocument':
+        return sessionManager.deactivateDocument(sessionId)
       case 'setDocumentWorkspace':
-        throw new Error(`Document workspace command not implemented yet: ${command.type}`)
+        return sessionManager.setDocumentWorkspace(sessionId, command.documentState)
       // Pending plan execution (Accept & Compact flow)
       case 'setPendingPlanExecution':
         return sessionManager.setPendingPlanExecution(sessionId, command.planPath, command.draftInputSnapshot)

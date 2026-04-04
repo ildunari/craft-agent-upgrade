@@ -39,7 +39,12 @@ import {
   type Workspace,
   type WorkspaceInfo,
 } from '@craft-agent/shared/config'
-import type { ActiveSessionInfo, SessionProcessingStatus } from '@craft-agent/core/types'
+import type {
+  ActiveSessionInfo,
+  SessionDocumentRevision,
+  SessionDocumentState,
+  SessionProcessingStatus,
+} from '@craft-agent/core/types'
 import { loadWorkspaceConfig } from '@craft-agent/shared/workspaces'
 import {
   // Session persistence functions
@@ -893,6 +898,8 @@ interface ManagedSession {
   transferredSessionSummary?: string
   // Whether the transferred-session summary has already been injected.
   transferredSessionSummaryApplied?: boolean
+  // Session-scoped document workspace state.
+  documentState?: SessionDocumentState
   // Token refresh manager for OAuth token refresh with rate limiting
   tokenRefreshManager: TokenRefreshManager
   // Metadata for sessions created by automations
@@ -1101,6 +1108,110 @@ function managedToSession(m: ManagedSession, overrides?: Partial<Session>): Sess
   } as Session
 }
 
+function normalizeDocumentState(documentState?: SessionDocumentState): SessionDocumentState | undefined {
+  if (!documentState) return undefined
+
+  const documents = Array.isArray(documentState.documents)
+    ? documentState.documents.filter(document => !!document?.id)
+    : []
+  const documentIds = new Set(documents.map(document => document.id))
+
+  const revisions = Array.isArray(documentState.revisions)
+    ? documentState.revisions.filter(revision =>
+      !!revision?.id &&
+      !!revision.documentId &&
+      !!revision.branchId &&
+      documentIds.has(revision.documentId),
+    )
+    : []
+  const revisionById = new Map(revisions.map(revision => [revision.id, revision] as const))
+
+  const activeRevision = documentState.workspace?.activeRevisionId
+    ? revisionById.get(documentState.workspace.activeRevisionId)
+    : undefined
+  const activeDocumentId = activeRevision?.documentId ?? (
+    documentState.workspace?.activeDocumentId && documentIds.has(documentState.workspace.activeDocumentId)
+      ? documentState.workspace.activeDocumentId
+      : undefined
+  )
+  const activeRevisionId = activeRevision && (!activeDocumentId || activeRevision.documentId === activeDocumentId)
+    ? activeRevision.id
+    : undefined
+  const activeBranchId = activeRevisionId
+    ? activeRevision?.branchId
+    : undefined
+
+  const recentDocumentIds = Array.from(new Set(
+    (documentState.workspace?.recentDocumentIds ?? []).filter(documentId => documentIds.has(documentId)),
+  ))
+
+  if (activeDocumentId && !recentDocumentIds.includes(activeDocumentId)) {
+    recentDocumentIds.unshift(activeDocumentId)
+  }
+
+  return {
+    documents,
+    revisions,
+    workspace: {
+      activeDocumentId,
+      activeRevisionId,
+      activeBranchId,
+      sidePanelOpen: documentState.workspace?.sidePanelOpen ?? false,
+      recentDocumentIds,
+    },
+  }
+}
+
+function getActiveDocumentRevision(
+  documentState: SessionDocumentState,
+  documentId: string,
+  options?: { revisionId?: string; branchId?: string },
+): SessionDocumentRevision | undefined {
+  const revisions = documentState.revisions.filter(revision => revision.documentId === documentId)
+
+  if (options?.revisionId) {
+    const revision = revisions.find(candidate => candidate.id === options.revisionId)
+    if (!revision) {
+      throw new Error(`Document revision not found: ${options.revisionId}`)
+    }
+    if (options.branchId && revision.branchId !== options.branchId) {
+      throw new Error(`Document revision ${options.revisionId} is not on branch ${options.branchId}`)
+    }
+    return revision
+  }
+
+  const branchFiltered = options?.branchId
+    ? revisions.filter(revision => revision.branchId === options.branchId)
+    : revisions
+
+  if (options?.branchId && branchFiltered.length === 0) {
+    throw new Error(`No revisions found for document ${documentId} on branch ${options.branchId}`)
+  }
+
+  return branchFiltered
+    .slice()
+    .sort((left, right) => (
+      right.revisionNumber - left.revisionNumber ||
+      right.createdAt - left.createdAt ||
+      right.id.localeCompare(left.id)
+    ))[0]
+}
+
+function prependRecentDocumentId(recentDocumentIds: string[], documentId: string): string[] {
+  return [documentId, ...recentDocumentIds.filter(candidate => candidate !== documentId)]
+}
+
+function createEmptyDocumentState(): SessionDocumentState {
+  return {
+    documents: [],
+    revisions: [],
+    workspace: {
+      sidePanelOpen: false,
+      recentDocumentIds: [],
+    },
+  }
+}
+
 // Performance: Batch IPC delta events to reduce renderer load
 const DELTA_BATCH_INTERVAL_MS = 50  // Flush batched deltas every 50ms
 
@@ -1276,6 +1387,26 @@ export class SessionManager implements ISessionManager {
     if (managed.name !== header.name) {
       managed.name = header.name
       this.sendEvent({ type: 'name_changed', sessionId, name: header.name }, managed.workspace.id)
+      changed = true
+    }
+
+    // Document workspace
+    const previousDocumentState = normalizeDocumentState(managed.documentState)
+    const incomingDocumentState = normalizeDocumentState(header.documentState)
+    if (JSON.stringify(previousDocumentState) !== JSON.stringify(incomingDocumentState)) {
+      managed.documentState = incomingDocumentState
+      this.sendEvent({
+        type: 'document_workspace_changed',
+        sessionId,
+        documentState: incomingDocumentState ?? {
+          documents: [],
+          revisions: [],
+          workspace: {
+            sidePanelOpen: false,
+            recentDocumentIds: [],
+          },
+        },
+      }, managed.workspace.id)
       changed = true
     }
 
@@ -4384,6 +4515,106 @@ export class SessionManager implements ISessionManager {
       // Notify renderer of the working directory change
       this.sendEvent({ type: 'working_directory_changed', sessionId, workingDirectory: path }, managed.workspace.id)
     }
+  }
+
+  setDocumentWorkspace(sessionId: string, documentState: SessionDocumentState): void {
+    const managed = this.sessions.get(sessionId)
+    if (!managed) {
+      throw new Error(`Session not found: ${sessionId}`)
+    }
+
+    const previousDocumentState = normalizeDocumentState(managed.documentState) ?? createEmptyDocumentState()
+    const nextDocumentState = normalizeDocumentState(documentState) ?? createEmptyDocumentState()
+
+    managed.documentState = nextDocumentState
+
+    const previousRevisionIds = new Set(previousDocumentState.revisions.map(revision => revision.id))
+    for (const revision of nextDocumentState.revisions) {
+      if (!previousRevisionIds.has(revision.id)) {
+        this.sendEvent({
+          type: 'document_revision_created',
+          sessionId,
+          documentState: nextDocumentState,
+          revisionId: revision.id,
+        }, managed.workspace.id)
+      }
+    }
+
+    this.persistSession(managed)
+    this.sendEvent({
+      type: 'document_workspace_changed',
+      sessionId,
+      documentState: nextDocumentState,
+    }, managed.workspace.id)
+  }
+
+  activateDocument(
+    sessionId: string,
+    documentId: string,
+    options?: { revisionId?: string; branchId?: string; sidePanelOpen?: boolean },
+  ): void {
+    const managed = this.sessions.get(sessionId)
+    if (!managed) {
+      throw new Error(`Session not found: ${sessionId}`)
+    }
+
+    const currentDocumentState = normalizeDocumentState(managed.documentState) ?? createEmptyDocumentState()
+    const document = currentDocumentState.documents.find(candidate => candidate.id === documentId)
+    if (!document) {
+      throw new Error(`Document not found in session workspace: ${documentId}`)
+    }
+
+    const activeRevision = getActiveDocumentRevision(currentDocumentState, documentId, options)
+    const nextDocumentState: SessionDocumentState = {
+      ...currentDocumentState,
+      workspace: {
+        activeDocumentId: documentId,
+        activeRevisionId: activeRevision?.id,
+        activeBranchId: activeRevision?.branchId,
+        sidePanelOpen: options?.sidePanelOpen ?? true,
+        recentDocumentIds: prependRecentDocumentId(currentDocumentState.workspace.recentDocumentIds, documentId),
+      },
+    }
+
+    managed.documentState = nextDocumentState
+    this.persistSession(managed)
+    this.sendEvent({
+      type: 'document_activated',
+      sessionId,
+      documentState: nextDocumentState,
+    }, managed.workspace.id)
+    this.sendEvent({
+      type: 'document_workspace_changed',
+      sessionId,
+      documentState: nextDocumentState,
+    }, managed.workspace.id)
+  }
+
+  deactivateDocument(sessionId: string): void {
+    const managed = this.sessions.get(sessionId)
+    if (!managed) {
+      throw new Error(`Session not found: ${sessionId}`)
+    }
+
+    const currentDocumentState = normalizeDocumentState(managed.documentState) ?? createEmptyDocumentState()
+    const nextDocumentState: SessionDocumentState = {
+      ...currentDocumentState,
+      workspace: {
+        ...currentDocumentState.workspace,
+        activeDocumentId: undefined,
+        activeRevisionId: undefined,
+        activeBranchId: undefined,
+        sidePanelOpen: false,
+      },
+    }
+
+    managed.documentState = nextDocumentState
+    this.persistSession(managed)
+    this.sendEvent({
+      type: 'document_workspace_changed',
+      sessionId,
+      documentState: nextDocumentState,
+    }, managed.workspace.id)
   }
 
   /**

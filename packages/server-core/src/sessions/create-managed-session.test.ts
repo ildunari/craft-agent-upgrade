@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'bun:test'
+import type { SessionDocumentState } from '@craft-agent/core/types'
 import {
   clearExternalPluginBackendsForTests,
   registerExternalPluginBackend,
@@ -42,6 +43,44 @@ describe('createManagedSession', () => {
     } as any, workspace as any)
 
     expect(managed.backendId).toBe('pi')
+  })
+
+  it('preserves document workspace state across restore', () => {
+    const documentState: SessionDocumentState = {
+      documents: [
+        {
+          id: 'doc-1',
+          displayName: 'Spec',
+          kind: 'markdown',
+          origin: 'generated',
+        },
+      ],
+      revisions: [
+        {
+          id: 'rev-1',
+          documentId: 'doc-1',
+          branchId: 'main',
+          revisionNumber: 1,
+          createdAt: 1,
+          createdBy: 'assistant',
+          hasAnnotations: false,
+        },
+      ],
+      workspace: {
+        activeDocumentId: 'doc-1',
+        activeRevisionId: 'rev-1',
+        activeBranchId: 'main',
+        sidePanelOpen: true,
+        recentDocumentIds: ['doc-1'],
+      },
+    }
+
+    const managed = createManagedSession({
+      id: 'session_document',
+      documentState,
+    } as any, workspace as any)
+
+    expect(managed.documentState).toEqual(documentState)
   })
 
   it('clears stale backend ids when a connection is cleared or unknown', () => {
