@@ -6,6 +6,8 @@
  */
 
 import tsParser from '@typescript-eslint/parser'
+import tsPlugin from '@typescript-eslint/eslint-plugin'
+import reactHooksPlugin from 'eslint-plugin-react-hooks'
 import noHardcodedZIndex from './eslint-rules/no-hardcoded-z-index.cjs'
 import noFloatingZTokensInIsland from './eslint-rules/no-floating-z-tokens-in-island.cjs'
 import noNonstandardShadows from './eslint-rules/no-nonstandard-shadows.cjs'
@@ -33,6 +35,8 @@ export default [
       },
     },
     plugins: {
+      '@typescript-eslint': tsPlugin,
+      'react-hooks': reactHooksPlugin,
       'craft-styles': {
         rules: {
           'no-hardcoded-z-index': noHardcodedZIndex,
@@ -42,6 +46,9 @@ export default [
       },
     },
     rules: {
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
+
       // Prevent direct Radix dropdown imports — use StyledDropdown wrappers instead
       'no-restricted-imports': ['error', {
         paths: [

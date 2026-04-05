@@ -498,7 +498,7 @@ export class PdfAnnotationSurface implements AnnotationSurface {
       overlay.style.width = '100%'
       overlay.style.height = '100%'
       overlay.style.pointerEvents = 'none'
-      overlay.style.zIndex = '5'
+      overlay.style.zIndex = 'var(--z-local, 10)'
 
       // Ensure container is positioned for absolute children
       const containerPosition = getComputedStyle(this.container).position

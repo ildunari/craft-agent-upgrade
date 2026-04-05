@@ -351,7 +351,7 @@ export class HtmlAnnotationSurface implements AnnotationSurface {
       overlay.style.width = '100%'
       overlay.style.height = '100%'
       overlay.style.pointerEvents = 'none'
-      overlay.style.zIndex = '2'
+      overlay.style.zIndex = 'var(--z-local, 10)'
 
       const parentPosition = getComputedStyle(parent).position
       if (parentPosition === 'static') {
