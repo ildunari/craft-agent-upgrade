@@ -185,10 +185,13 @@
       "version": "0.8.6",
       "dependencies": {
         "@craft-agent/core": "workspace:*",
+        "@craft-agent/shared": "workspace:*",
         "@craft-agent/ui": "workspace:*",
+        "i18next": "^26.0.4",
         "react": "^18.3.1",
         "react-dom": "^18.3.1",
         "react-i18next": "^17.0.2",
+        "react-pdf": "^10.3.0",
       },
       "devDependencies": {
         "@tailwindcss/typography": "^0.5.16",
