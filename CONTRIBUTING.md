@@ -23,6 +23,11 @@ Thank you for your interest in contributing to Craft Agents! This document provi
    bun install
    ```
 
+   If Git reports Husky hooks were ignored after install, restore their executable bits:
+   ```bash
+   find .husky -maxdepth 2 -type f ! -name '.gitignore' -exec chmod +x {} +
+   ```
+
 3. Set up environment variables:
    ```bash
    cp .env.example .env
