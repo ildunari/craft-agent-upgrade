@@ -24,7 +24,7 @@ import { parseError } from '../../errors.ts';
 
 /**
  * Combined event type the adapter can handle.
- * AgentSessionEvent is a superset of PiAgentEvent (adds compaction_*, auto_retry_*, queue_update).
+ * AgentSessionEvent is a superset of PiAgentEvent (adds compaction_*, auto_retry_*, and queue_update).
  */
 type PiEvent = PiAgentEvent | AgentSessionEvent;
 

@@ -958,6 +958,7 @@ describe('PiEventAdapter', () => {
     it('should emit status for compaction_start', () => {
       const events = collect(adapter.adaptEvent({
         type: 'compaction_start',
+        reason: 'threshold',
       } as any));
 
       expect(events).toHaveLength(1);
@@ -972,6 +973,7 @@ describe('PiEventAdapter', () => {
         type: 'compaction_end',
         result: { /* compaction result */ },
         aborted: false,
+        willRetry: false,
       } as any));
 
       expect(events).toHaveLength(1);
@@ -986,6 +988,7 @@ describe('PiEventAdapter', () => {
         type: 'compaction_end',
         result: null,
         aborted: false,
+        willRetry: false,
         errorMessage: 'Out of memory',
       } as any));
 
@@ -1001,6 +1004,7 @@ describe('PiEventAdapter', () => {
         type: 'compaction_end',
         result: null,
         aborted: true,
+        willRetry: false,
       } as any));
 
       expect(events).toHaveLength(0);
