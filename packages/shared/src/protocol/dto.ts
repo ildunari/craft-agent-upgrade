@@ -188,6 +188,7 @@ export type SessionEvent =
   | { type: 'sources_changed'; sessionId: string; enabledSourceSlugs: string[] }
   | { type: 'labels_changed'; sessionId: string; labels: string[] }
   | { type: 'connection_changed'; sessionId: string; connectionSlug: string; supportsBranching?: boolean }
+  | { type: 'backend_changed'; sessionId: string; backendId?: string; supportsBranching?: boolean }
   | { type: 'task_backgrounded'; sessionId: string; toolUseId: string; taskId: string; intent?: string; turnId?: string }
   | { type: 'shell_backgrounded'; sessionId: string; toolUseId: string; shellId: string; intent?: string; command?: string; turnId?: string }
   | { type: 'task_progress'; sessionId: string; toolUseId: string; elapsedSeconds: number; turnId?: string }
@@ -251,6 +252,7 @@ export type SessionCommand =
   | { type: 'revokeShare' }
   | { type: 'refreshTitle' }
   | { type: 'setConnection'; connectionSlug: string }
+  | { type: 'setBackend'; backendId?: string }
   | { type: 'activateDocument'; documentId: string; revisionId?: string; branchId?: string; sidePanelOpen?: boolean }
   | { type: 'setActiveDocumentRevision'; documentId: string; revisionId: string; sidePanelOpen?: boolean }
   | { type: 'forkDocumentBranch'; documentId: string; revisionId: string; label?: string; sidePanelOpen?: boolean }

@@ -324,6 +324,16 @@ export interface LLMConnectionChangedEvent {
 }
 
 /**
+ * Backend changed event - syncs session.backendId to renderer
+ */
+export interface BackendChangedEvent {
+  type: 'backend_changed'
+  sessionId: string
+  backendId?: string
+  supportsBranching?: boolean
+}
+
+/**
  * Credential request event - prompts user for credentials
  */
 export interface CredentialRequestEvent {
@@ -555,6 +565,7 @@ export type AgentEvent =
   | PermissionModeChangedEvent
   | SessionModelChangedEvent
   | LLMConnectionChangedEvent
+  | BackendChangedEvent
   | TaskBackgroundedEvent
   | ShellBackgroundedEvent
   | TaskProgressEvent

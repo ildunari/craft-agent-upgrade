@@ -290,6 +290,9 @@ export function registerSessionsHandlers(server: RpcServer, deps: HandlerDeps): 
       case 'setConnection':
         log.info(`IPC: setConnection received for session ${sessionId}, connection: ${command.connectionSlug}`)
         return sessionManager.setSessionConnection(sessionId, command.connectionSlug)
+      case 'setBackend':
+        log.info(`IPC: setBackend received for session ${sessionId}, backend: ${command.backendId ?? '(default)'}`)
+        return sessionManager.setSessionBackend(sessionId, command.backendId)
       case 'activateDocument':
         return sessionManager.activateDocument(sessionId, command.documentId, {
           revisionId: command.revisionId,

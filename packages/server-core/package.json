@@ -33,6 +33,7 @@
     "@mariozechner/pi-ai": "0.66.1"
   },
   "devDependencies": {
+    "@types/ws": "^8.18.1",
     "typescript": "^5.8.2",
     "@types/node": "^22.0.0"
   }

@@ -15,7 +15,5 @@
     "@anthropic-ai/claude-agent-sdk": ">=0.2.19",
     "@modelcontextprotocol/sdk": ">=1.0.0"
   },
-  "devDependencies": {
-    "@types/uuid": "^11.0.0"
-  }
+  "devDependencies": {}
 }

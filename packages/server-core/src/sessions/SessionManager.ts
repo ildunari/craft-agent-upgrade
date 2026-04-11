@@ -2634,7 +2634,7 @@ export class SessionManager implements ISessionManager {
       backendId: options?.backendId,
       llmConnection: options?.llmConnection,
       workspaceDefaultConnectionSlug: wsConfig?.defaults?.defaultLlmConnection,
-      managedModel: resolvedModelOption,
+      model: resolvedModelOption,
     })
     const targetBackendContext = targetBackend.kind === 'built-in'
       ? targetBackend.backendContext
@@ -4270,6 +4270,52 @@ export class SessionManager implements ISessionManager {
       type: 'connection_changed',
       sessionId,
       connectionSlug,
+      supportsBranching: resolveSupportsBranching(managed),
+    }, managed.workspace.id)
+  }
+
+  /**
+   * Set the backend target for a session before it starts.
+   * External plugin backends clear any selected LLM connection because they own execution.
+   */
+  async setSessionBackend(sessionId: string, backendId?: string): Promise<void> {
+    const managed = this.sessions.get(sessionId)
+    if (!managed) {
+      sessionLog.warn(`setSessionBackend: session ${sessionId} not found`)
+      throw new Error(`Session ${sessionId} not found`)
+    }
+
+    if (managed.messages && managed.messages.length > 0) {
+      sessionLog.warn(`setSessionBackend: cannot change backend after session has started (${sessionId})`)
+      throw new Error('Cannot change backend after session has started')
+    }
+
+    const requestedBackendId = backendId?.trim() || undefined
+    const externalBackend = requestedBackendId ? getExternalPluginBackend(requestedBackendId) : undefined
+    const wsConfig = loadWorkspaceConfig(managed.workspace.rootPath)
+    const nextConnection = externalBackend ? undefined : managed.llmConnection
+    const targetBackend = resolveSessionBackendTarget({
+      backendId: requestedBackendId,
+      llmConnection: nextConnection,
+      workspaceDefaultConnectionSlug: wsConfig?.defaults?.defaultLlmConnection,
+      model: managed.model,
+    })
+
+    managed.backendId = targetBackend.backendId
+    if (externalBackend) {
+      managed.llmConnection = undefined
+    } else if (managed.llmConnection) {
+      syncBackendIdFromConnection(managed)
+    }
+
+    this.persistSession(managed)
+    await this.flushSession(managed.id)
+    sessionLog.info(`Set backend for session ${sessionId} to ${managed.backendId ?? '(default)'}`)
+
+    this.sendEvent({
+      type: 'backend_changed',
+      sessionId,
+      backendId: managed.backendId,
       supportsBranching: resolveSupportsBranching(managed),
     }, managed.workspace.id)
   }

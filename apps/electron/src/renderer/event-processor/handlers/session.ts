@@ -32,6 +32,7 @@ import type {
   PermissionModeChangedEvent,
   SessionModelChangedEvent,
   LLMConnectionChangedEvent,
+  BackendChangedEvent,
   UserMessageEvent,
   MessageAnnotationsUpdatedEvent,
   SessionSharedEvent,
@@ -478,6 +479,28 @@ export function handleConnectionChanged(
       session: {
         ...session,
         llmConnection: event.connectionSlug,
+        ...(event.supportsBranching !== undefined && { supportsBranching: event.supportsBranching }),
+      },
+      streaming,
+    },
+    effects: [],
+  }
+}
+
+/**
+ * Handle backend_changed - sync session.backendId to renderer state
+ */
+export function handleBackendChanged(
+  state: SessionState,
+  event: BackendChangedEvent,
+): ProcessResult {
+  const { session, streaming } = state
+
+  return {
+    state: {
+      session: {
+        ...session,
+        backendId: event.backendId,
         ...(event.supportsBranching !== undefined && { supportsBranching: event.supportsBranching }),
       },
       streaming,
