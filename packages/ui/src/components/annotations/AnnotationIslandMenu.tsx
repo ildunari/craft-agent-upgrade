@@ -9,6 +9,7 @@ import {
 } from '../ui'
 import { cn } from '../../lib/utils'
 import { clampIslandAnchorX, getDefaultIslandWidthEstimate } from './island-motion'
+import { useTranslation } from 'react-i18next'
 
 export type AnnotationIslandView = 'compact' | 'confirm-follow-up'
 export type AnnotationIslandMode = 'edit' | 'view'
@@ -65,6 +66,7 @@ export function AnnotationIslandMenu({
   overlayZIndex,
   usePortal = true,
 }: AnnotationIslandMenuProps) {
+  const { t } = useTranslation()
   const menuRef = React.useRef<HTMLDivElement>(null)
   const [activeViewSize, setActiveViewSize] = React.useState<{ width: number; height: number } | null>(null)
 
@@ -140,7 +142,7 @@ export function AnnotationIslandMenu({
               )}
             >
               <CornerDownRight className="h-3.5 w-3.5" />
-              <span>Follow up</span>
+              <span>{t('chat.followUp')}</span>
             </button>
             {onCopyAsQuote && (
               <button
@@ -169,9 +171,9 @@ export function AnnotationIslandMenu({
           onSubmit={onSubmit}
           onSubmitAndSend={onSubmitAndSend}
           onDelete={onDelete}
-          title="Follow-up"
+          title={t('chat.followUp')}
           submitLabel="Save"
-          placeholder="Add comments the agent should consider in the next turn…"
+          placeholder={t('chat.annotationPlaceholder')}
           maxInputHeight={320}
           sendMessageKey={sendMessageKey}
           lockScroll

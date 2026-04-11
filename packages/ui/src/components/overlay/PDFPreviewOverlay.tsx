@@ -13,6 +13,7 @@
  */
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Document, Page, pdfjs } from 'react-pdf'
 import type { PDFDocumentProxy } from 'pdfjs-dist/types/src/display/api'
 import { FileText } from 'lucide-react'
@@ -82,6 +83,8 @@ export function PDFPreviewOverlay({
   sendMessageKey = 'enter',
   onToast,
 }: PDFPreviewOverlayProps) {
+  const { t } = useTranslation()
+
   // Normalize: items array or single filePath
   const resolvedItems = useMemo<PreviewItem[]>(() => {
     if (items && items.length > 0) return items
@@ -316,7 +319,7 @@ export function PDFPreviewOverlay({
   const headerActions = (
     <div className="flex items-center gap-2">
       <ItemNavigator items={resolvedItems} activeIndex={activeIdx} onSelect={setActiveIdx} size="md" />
-      <CopyButton content={activeItem?.src || filePath} title="Copy path" className="bg-background shadow-minimal" />
+      <CopyButton content={activeItem?.src || filePath} title={t('common.copyPath')} className="bg-background shadow-minimal" />
     </div>
   )
 

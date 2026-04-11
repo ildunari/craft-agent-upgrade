@@ -37,6 +37,7 @@ import { PDFPreviewOverlay } from '../overlay/PDFPreviewOverlay'
 import { ItemNavigator } from '../overlay/ItemNavigator'
 import { Tooltip, TooltipTrigger, TooltipContent } from '../tooltip'
 import { usePlatform } from '../../context/PlatformContext'
+import { useTranslation } from 'react-i18next'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
 import 'react-pdf/dist/Page/TextLayer.css'
 
@@ -108,6 +109,7 @@ export function MarkdownPdfBlock({
   sendMessageKey,
   onToast,
 }: MarkdownPdfBlockProps) {
+  const { t } = useTranslation()
   const { onReadFileBinary } = usePlatform()
 
   // Parse the JSON spec — supports single src or items array
@@ -287,4 +289,3 @@ export function MarkdownPdfBlock({
     </PdfBlockErrorBoundary>
   )
 }
-

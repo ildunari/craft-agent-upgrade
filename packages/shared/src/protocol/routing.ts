@@ -145,12 +145,15 @@ export const LOCAL_ONLY_CHANNELS = new Set<string>([
   RPC_CHANNELS.appearance.GET_RICH_TOOL_DESCRIPTIONS,
   RPC_CHANNELS.appearance.SET_RICH_TOOL_DESCRIPTIONS,
 
-  // caching — local app/runtime preferences
+  // caching — prompt cache and context settings
   RPC_CHANNELS.caching.GET_EXTENDED_PROMPT_CACHE,
   RPC_CHANNELS.caching.SET_EXTENDED_PROMPT_CACHE,
   RPC_CHANNELS.caching.GET_ENABLE_1M_CONTEXT,
   RPC_CHANNELS.caching.SET_ENABLE_1M_CONTEXT,
 
+  // tools — local tool settings
+  RPC_CHANNELS.tools.GET_BROWSER_TOOL_ENABLED,
+  RPC_CHANNELS.tools.SET_BROWSER_TOOL_ENABLED,
   // browserPane — Electron BrowserView
   RPC_CHANNELS.browserPane.CREATE,
   RPC_CHANNELS.browserPane.DESTROY,
@@ -240,6 +243,12 @@ export const REMOTE_ELIGIBLE_CHANNELS = new Set<string>([
   RPC_CHANNELS.sessions.IMPORT,
   RPC_CHANNELS.sessions.EXPORT_REMOTE_TRANSFER,
   RPC_CHANNELS.sessions.IMPORT_REMOTE_TRANSFER,
+
+  // transfer — chunked large-payload import (sessions, resources)
+  RPC_CHANNELS.transfer.START,
+  RPC_CHANNELS.transfer.CHUNK,
+  RPC_CHANNELS.transfer.COMMIT,
+  RPC_CHANNELS.transfer.ABORT,
 
   // tasks — workspace content
   RPC_CHANNELS.tasks.GET_OUTPUT,
@@ -385,6 +394,7 @@ export const REMOTE_ELIGIBLE_CHANNELS = new Set<string>([
   RPC_CHANNELS.logo.GET_URL,
 
   // automations — workspace automations
+  RPC_CHANNELS.automations.GET,
   RPC_CHANNELS.automations.TEST,
   RPC_CHANNELS.automations.SET_ENABLED,
   RPC_CHANNELS.automations.DUPLICATE,
@@ -396,6 +406,10 @@ export const REMOTE_ELIGIBLE_CHANNELS = new Set<string>([
 
   // git — workspace filesystem
   RPC_CHANNELS.git.GET_BRANCH,
+
+  // resources — workspace resource export/import
+  RPC_CHANNELS.resources.EXPORT,
+  RPC_CHANNELS.resources.IMPORT,
 ])
 
 // ---------------------------------------------------------------------------

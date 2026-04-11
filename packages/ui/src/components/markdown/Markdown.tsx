@@ -19,7 +19,7 @@ import { MarkdownLatexBlock } from './MarkdownLatexBlock'
 import { MarkdownPdfBlock } from './MarkdownPdfBlock'
 import { MarkdownDocxBlock } from './MarkdownDocxBlock'
 import { preprocessLinks } from './linkify'
-import { classifyMarkdownLinkTarget } from './link-target'
+import { resolveMarkdownLinkTarget } from './link-target'
 import remarkCollapsibleSections from './remarkCollapsibleSections'
 import { CollapsibleSection } from './CollapsibleSection'
 import { useCollapsibleMarkdown } from './CollapsibleMarkdownContext'
@@ -200,11 +200,11 @@ function createComponents(
         const target = (href?.trim() || fallbackText)
         if (!target) return
 
-        const targetType = classifyMarkdownLinkTarget(target)
-        if (targetType === 'file' && onFileClick) {
-          onFileClick(target)
-        } else if (onUrlClick) {
-          onUrlClick(target)
+        const resolvedTarget = resolveMarkdownLinkTarget(target)
+        if (resolvedTarget.kind === 'file' && onFileClick) {
+          onFileClick(resolvedTarget.path)
+        } else if (resolvedTarget.kind === 'url' && onUrlClick) {
+          onUrlClick(resolvedTarget.url)
         }
       }
 

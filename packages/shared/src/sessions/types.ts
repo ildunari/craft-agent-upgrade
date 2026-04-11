@@ -162,6 +162,8 @@ export interface SessionConfig {
     draftInputSnapshot?: string;
     /** Whether we're still waiting for compaction to complete */
     awaitingCompaction: boolean;
+    /** Whether execution has already been dispatched from the UI. */
+    executionDispatched?: boolean;
   };
   /** When true, session is hidden from session list (e.g., mini edit sessions) */
   hidden?: boolean;
@@ -282,6 +284,8 @@ export interface SessionHeader {
     draftInputSnapshot?: string;
     /** Whether we're still waiting for compaction to complete */
     awaitingCompaction: boolean;
+    /** Whether execution has already been dispatched from the UI. */
+    executionDispatched?: boolean;
   };
   /** When true, session is hidden from session list (e.g., mini edit sessions) */
   hidden?: boolean;
