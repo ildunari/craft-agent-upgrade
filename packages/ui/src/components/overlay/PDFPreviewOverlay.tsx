@@ -15,7 +15,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Document, Page, pdfjs } from 'react-pdf'
-import type { PDFDocumentProxy } from 'pdfjs-dist/types/src/display/api'
+import type { PDFDocumentProxy } from 'pdfjs-dist'
 import { FileText } from 'lucide-react'
 import type { AnnotationV1 } from '@craft-agent/core'
 import { PreviewOverlay } from './PreviewOverlay'
@@ -279,7 +279,7 @@ export function PDFPreviewOverlay({
     return () => { cancelled = true }
   }, [isOpen, activeItem?.src, loadPdfData])
 
-  const onDocumentLoadSuccess = useCallback((pdf: { numPages: number } & PDFDocumentProxy) => {
+  const onDocumentLoadSuccess = useCallback((pdf: PDFDocumentProxy) => {
     setNumPages(pdf.numPages)
     pdfDocRef.current = pdf
     surfaceRef.current = null // Reset surface so it picks up new doc
